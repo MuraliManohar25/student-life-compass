@@ -1,5 +1,7 @@
 export type NavTab =
   | "landing"
+  | "auth"
+  | "onboarding"
   | "dashboard"
   | "career-mentor"
   | "intelligence-score"

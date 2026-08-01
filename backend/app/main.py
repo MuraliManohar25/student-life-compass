@@ -8,6 +8,7 @@ from app.seed_data import seed_database
 
 # API Routers
 from app.api.auth import router as auth_router
+from app.api.profile import router as profile_router
 from app.api.career import router as career_router
 from app.api.study import router as study_router
 from app.api.budget import router as budget_router
@@ -47,6 +48,7 @@ app.add_middleware(
 
 # Register Routers
 app.include_router(auth_router, prefix=settings.API_V1_STR)
+app.include_router(profile_router, prefix=settings.API_V1_STR)
 app.include_router(career_router, prefix=settings.API_V1_STR)
 app.include_router(study_router, prefix=settings.API_V1_STR)
 app.include_router(budget_router, prefix=settings.API_V1_STR)

@@ -26,7 +26,7 @@ class MLService:
         except Exception as e:
             print(f"Warning: Could not load ML models directly: {e}")
 
-    def predict_budget(self, daily_avg: float, days_elapsed: int, total_days: int = 30, food_ratio: float = 0.4, academic_ratio: float = 0.3) -> dict:
+    def predict_budget(self, daily_avg: float, days_elapsed: int, total_days: int = 30, food_ratio: float = 0.4, academic_ratio: float = 0.3, monthly_budget: float = 5000.0) -> dict:
         if self.budget_model:
             features = np.array([[daily_avg, days_elapsed, total_days, food_ratio, academic_ratio]])
             predicted_total = float(self.budget_model.predict(features)[0])
@@ -34,8 +34,8 @@ class MLService:
             predicted_total = daily_avg * total_days * 1.05
 
         predicted_total = max(predicted_total, daily_avg * days_elapsed)
-        monthly_budget = 5000.0
-        remaining_budget = max(0.0, monthly_budget - (daily_avg * days_elapsed))
+        user_budget = monthly_budget if monthly_budget > 0 else 5000.0
+        remaining_budget = max(0.0, user_budget - (daily_avg * days_elapsed))
         daily_cap = max(50.0, remaining_budget / max(1, (total_days - days_elapsed)))
 
         suggestions = []
@@ -52,7 +52,7 @@ class MLService:
         return {
             "predicted_monthly_total": round(predicted_total, 2),
             "remaining_budget": round(remaining_budget, 2),
-            "monthly_budget": monthly_budget,
+            "monthly_budget": user_budget,
             "daily_cap": round(daily_cap, 2),
             "suggestions": suggestions,
             "forecast_confidence": 94.5

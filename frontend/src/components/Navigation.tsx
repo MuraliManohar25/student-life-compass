@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef } from "react";
 import { NavTab } from "../types";
-import { notificationsApi } from "../services/api";
+import { notificationsApi, authApi } from "../services/api";
 
 interface NotifItem {
   id: number;
@@ -216,8 +216,8 @@ export const Navigation: React.FC<NavigationProps> = ({
               className="flex items-center gap-2 ml-1 pl-3 border-l border-white/10 cursor-pointer hover:opacity-90 transition-opacity"
             >
               <div className="text-right hidden lg:block">
-                <p className="text-xs font-bold leading-tight text-[#e5e2e3]">Murali K.</p>
-                <p className="text-[10px] text-[#c7c4d8] uppercase tracking-wider">Computer Science</p>
+                <p className="text-xs font-bold leading-tight text-[#e5e2e3]">Student Profile</p>
+                <p className="text-[10px] text-[#c7c4d8] uppercase tracking-wider">Account Active</p>
               </div>
               <div className="w-8 h-8 rounded-full bg-[#4f46e5]/20 border border-[#4f46e5]/30 flex items-center justify-center text-[#c3c0ff]">
                 <span className="material-symbols-outlined text-lg">account_circle</span>
@@ -320,6 +320,18 @@ export const Navigation: React.FC<NavigationProps> = ({
             >
               <span className="material-symbols-outlined text-lg">preview</span>
               <span>Public Landing Page</span>
+            </button>
+
+            <button
+              onClick={() => {
+                authApi.logout();
+                setActiveTab("auth");
+                setMobileMenuOpen(false);
+              }}
+              className="w-full flex items-center gap-3 px-4 py-2.5 rounded-xl text-xs font-semibold text-red-300 hover:bg-red-500/10 transition-all"
+            >
+              <span className="material-symbols-outlined text-lg">logout</span>
+              <span>Sign Out</span>
             </button>
           </nav>
 

@@ -30,6 +30,16 @@ class UserOut(BaseModel):
         from_attributes = True
 
 # Profile Schemas
+class ProfileUpdate(BaseModel):
+    college: str
+    major: str
+    current_gpa: float
+    target_gpa: float
+    target_role: str
+    sleep_hours: float
+    monthly_budget: float
+    skills: List[dict]  # [{"name": str, "proficiency_score": float}]
+
 class ProfileOut(BaseModel):
     id: int
     user_id: int
@@ -41,6 +51,7 @@ class ProfileOut(BaseModel):
     target_role: str
     market_match_index: float
     sleep_hours: float
+    monthly_budget: Optional[float] = 0.0
 
     class Config:
         from_attributes = True

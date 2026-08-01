@@ -16,8 +16,11 @@ def get_dashboard(
     expenses = db.query(Expense).filter(Expense.user_id == current_user.id).all()
     sessions = db.query(StudySession).filter(StudySession.user_id == current_user.id).all()
 
-    total_spent = sum(e.amount for e in expenses)
-    remaining_budget = max(0.0, 5000.0 - total_spent)
+    from app.models.models import BudgetPrediction
+    budget_pred = db.query(BudgetPrediction).filter(BudgetPrediction.user_id == current_user.id).first()
+    monthly_budget = budget_pred.monthly_budget if (budget_pred and budget_pred.monthly_budget > 0) else 5000.0
+    remaining_budget = max(0.0, monthly_budget - total_spent)
+    daily_limit = budget_pred.daily_cap if (budget_pred and budget_pred.daily_cap > 0) else round(monthly_budget / 30.0, 2)
 
     tasks_list = [
         {"id": "1", "title": "Complete DBMS Lab Assignment 4", "completed": False, "category": "Academic"},
@@ -74,8 +77,8 @@ def get_dashboard(
         "cohort_standing": profile.cohort_standing if profile else "Top 15%",
         "intelligence_score": 84.0,
         "score_trend": "+6%",
-        "remaining_budget": remaining_budget if remaining_budget > 0 else 1640.0,
-        "daily_budget_limit": 200.0,
+        "remaining_budget": remaining_budget,
+        "daily_budget_limit": daily_limit,
         "academic_index": 72.0,
         "placement_odds": 68.0,
         "tasks": tasks_list,

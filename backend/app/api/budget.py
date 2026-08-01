@@ -70,12 +70,17 @@ def get_budget_summary(
     total_days = calendar.monthrange(now.year, now.month)[1]
     days_elapsed = now.day
 
+    # Fetch actual user monthly_budget from BudgetPrediction
+    budget_pred = db.query(BudgetPrediction).filter(BudgetPrediction.user_id == current_user.id).first()
+    user_budget = budget_pred.monthly_budget if (budget_pred and budget_pred.monthly_budget > 0) else 5000.0
+
     ml_prediction = ml_service.predict_budget(
         daily_avg=daily_avg,
         days_elapsed=days_elapsed,
         total_days=total_days,
         food_ratio=food_ratio,
-        academic_ratio=academic_ratio
+        academic_ratio=academic_ratio,
+        monthly_budget=user_budget
     )
 
     return {

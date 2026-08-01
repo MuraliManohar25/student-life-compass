@@ -43,6 +43,27 @@ export const authApi = {
   },
 };
 
+// Profile & Onboarding API
+export const profileApi = {
+  getProfile: async () => {
+    const res = await apiClient.get('/profile/me');
+    return res.data;
+  },
+  updateProfile: async (data: {
+    college: string;
+    major: string;
+    current_gpa: number;
+    target_gpa: number;
+    target_role: string;
+    sleep_hours: number;
+    monthly_budget: number;
+    skills: { name: string; proficiency_score: number }[];
+  }) => {
+    const res = await apiClient.put('/profile/me', data);
+    return res.data;
+  },
+};
+
 // Dashboard API
 export const dashboardApi = {
   getDashboard: async () => {
