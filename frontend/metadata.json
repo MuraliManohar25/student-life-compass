@@ -1,0 +1,6 @@
+{
+  "name": "Compass AI",
+  "description": "The high-performance OS for modern students. Master your budget, visualize your career path, and predict academic risks with AI.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
