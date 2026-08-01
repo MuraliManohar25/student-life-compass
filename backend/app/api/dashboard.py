@@ -74,7 +74,7 @@ def get_dashboard(
     ]
 
     return {
-        "user_name": current_user.full_name or "Murali",
+        "user_name": current_user.full_name or "Student",
         "cohort_standing": profile.cohort_standing if profile else "Top 15%",
         "intelligence_score": 84.0,
         "score_trend": "+6%",

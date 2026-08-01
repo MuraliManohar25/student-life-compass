@@ -9,40 +9,58 @@ interface IntelligenceReportViewProps {
 export const IntelligenceReportView: React.FC<IntelligenceReportViewProps> = ({
   setActiveTab,
 }) => {
-  const [report, setReport] = useState<any>({
-    student_name: "Murali K.",
-    major: "Stanford CS",
-    intelligence_score: 82.0,
-    score_change: "+4.2% MoM",
-    cohort_ranking: "95% of students",
-    academic_rigor: 88,
-    career_velocity: 84,
-    financial_discipline: 79,
-    metrics: {
-      gpa_projection: "3.88 / 4.0",
-      placement_odds: "94% Success",
-      monthly_runway: "22 Days Left",
-      sleep_quality: "6.2h Avg"
-    },
-    ai_synthesis: "Murali's primary growth lever for Semester 2 is containerized deployment and Docker networking. Academic submission timing has improved by 18%, reducing late-night stress spikes. Financial discipline is high with ₹1,640 runway remaining for March.",
-    actionable_tips: [
-      { type: "Next Level Tip", text: "Complete 2 Docker labs this weekend to unlock 96% placement match for top ML roles.", color: "text-[#c3c0ff]" },
-      { type: "Optimization", text: "Shift OS study blocks to 10:00 AM where focus retention is measured at 92%.", color: "text-emerald-400" },
-      { type: "Risk Guard", text: "Ensure 7+ hours sleep on Thursday to prevent fatigue during OS mid-term.", color: "text-amber-300" }
-    ]
-  });
+  const [report, setReport] = useState<any>(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
     async function loadReport() {
+      setLoading(true);
+      setError(null);
       try {
         const data = await reportsApi.getWeeklyReport();
-        if (data) setReport(data);
+        if (data) {
+          setReport(data);
+        } else {
+          setError("Couldn't load your report — try again");
+        }
       } catch (err) {
-        console.warn("Weekly report API fallback:", err);
+        console.warn("Weekly report API load error:", err);
+        setError("Couldn't load your report — try again");
+      } finally {
+        setLoading(false);
       }
     }
     loadReport();
   }, []);
+
+  if (loading) {
+    return (
+      <div className="min-h-screen pt-20 pb-12 px-4 md:px-8 max-w-7xl mx-auto flex items-center justify-center">
+        <div className="glass-card p-8 rounded-2xl border border-white/10 text-center space-y-4">
+          <span className="material-symbols-outlined text-4xl text-[#c3c0ff] animate-spin">autorenew</span>
+          <p className="text-sm text-[#e5e2e3]">Loading your report...</p>
+        </div>
+      </div>
+    );
+  }
+
+  if (error || !report) {
+    return (
+      <div className="min-h-screen pt-20 pb-12 px-4 md:px-8 max-w-7xl mx-auto flex items-center justify-center">
+        <div className="glass-card p-8 rounded-2xl border border-white/10 text-center space-y-4 max-w-md">
+          <span className="material-symbols-outlined text-4xl text-amber-400">warning</span>
+          <p className="text-sm text-[#e5e2e3]">{error || "Couldn't load your report — try again"}</p>
+          <button
+            onClick={() => window.location.reload()}
+            className="px-4 py-2 bg-[#4f46e5] text-white text-xs font-bold rounded-xl hover:brightness-110"
+          >
+            Try Again
+          </button>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen pt-20 pb-12 px-4 md:px-8 max-w-7xl mx-auto space-y-8">
