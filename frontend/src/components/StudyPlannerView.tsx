@@ -4,6 +4,7 @@ import { studyApi } from "../services/api";
 export const StudyPlannerView: React.FC = () => {
   const [timerSeconds, setTimerSeconds] = useState(25 * 60);
   const [timerActive, setTimerActive] = useState(false);
+  const [timerDone, setTimerDone] = useState(false);
   const [selectedDay, setSelectedDay] = useState("Today");
 
   const [timetable, setTimetable] = useState([
@@ -12,6 +13,23 @@ export const StudyPlannerView: React.FC = () => {
     { id: 3, time: "02:00 PM", title: "DSA Problem Solving (LeetCode)", room: "Library", tag: "Practice", status: "Upcoming" },
     { id: 4, time: "05:00 PM", title: "Docker Containerization Study", room: "Hostel Room", tag: "AI Mentor", status: "Upcoming" },
   ]);
+
+  // Bug #4 fix — countdown effect
+  useEffect(() => {
+    if (!timerActive) return;
+    const id = setInterval(() => {
+      setTimerSeconds((s) => {
+        if (s <= 1) {
+          clearInterval(id);
+          setTimerActive(false);
+          setTimerDone(true);
+          return 0;
+        }
+        return s - 1;
+      });
+    }, 1000);
+    return () => clearInterval(id);
+  }, [timerActive]);
 
   useEffect(() => {
     async function loadSessions() {
@@ -35,11 +53,14 @@ export const StudyPlannerView: React.FC = () => {
   }, []);
 
   const handleStartSprint = () => {
-    if (!timerActive) {
+    if (!timerActive && timerSeconds === 25 * 60) {
+      // Only log a new sprint when starting fresh
       studyApi.logSprint(25).catch((err) => console.warn(err));
     }
+    setTimerDone(false);
     setTimerActive(!timerActive);
   };
+
 
   return (
     <div className="min-h-screen pt-20 pb-12 px-4 md:px-8 max-w-7xl mx-auto space-y-8">
@@ -77,17 +98,19 @@ export const StudyPlannerView: React.FC = () => {
       {/* Grid: Focus Session Timer + Daily Timetable */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         {/* Pomodoro Focus Timer */}
-        <div className="glass-card p-6 rounded-2xl border border-white/10 text-center space-y-6 flex flex-col justify-between">
+        <div className={`glass-card p-6 rounded-2xl border text-center space-y-6 flex flex-col justify-between transition-all duration-500 ${timerDone ? "border-emerald-500/50 bg-emerald-500/5" : "border-white/10"}`}>
           <div>
-            <div className="w-10 h-10 rounded-xl bg-cyan-500/20 text-cyan-400 mx-auto flex items-center justify-center mb-2">
-              <span className="material-symbols-outlined text-xl">timer</span>
+            <div className={`w-10 h-10 rounded-xl mx-auto flex items-center justify-center mb-2 transition-colors ${timerDone ? "bg-emerald-500/20 text-emerald-400" : "bg-cyan-500/20 text-cyan-400"}`}>
+              <span className="material-symbols-outlined text-xl">{timerDone ? "check_circle" : "timer"}</span>
             </div>
             <h3 className="font-headline font-bold text-lg text-white">Focus Sprint Timer</h3>
-            <p className="text-xs text-[#c7c4d8]">25 Min Deep Work Session</p>
+            <p className={`text-xs ${timerDone ? "text-emerald-400 font-semibold" : "text-[#c7c4d8]"}`}>
+              {timerDone ? "🎉 Sprint Complete! Great work!" : "25 Min Deep Work Session"}
+            </p>
           </div>
 
           <div className="my-4">
-            <span className="font-mono font-black text-5xl text-white tracking-widest">
+            <span className={`font-mono font-black text-5xl tracking-widest transition-colors ${timerDone ? "text-emerald-400" : timerActive ? "text-cyan-300" : "text-white"}`}>
               {Math.floor(timerSeconds / 60)
                 .toString()
                 .padStart(2, "0")}
@@ -106,6 +129,7 @@ export const StudyPlannerView: React.FC = () => {
             <button
               onClick={() => {
                 setTimerActive(false);
+                setTimerDone(false);
                 setTimerSeconds(25 * 60);
               }}
               className="px-4 py-2.5 rounded-xl bg-white/5 border border-white/10 text-xs text-[#c7c4d8] hover:text-white"

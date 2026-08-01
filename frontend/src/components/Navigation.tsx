@@ -1,5 +1,14 @@
-import React, { useState } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import { NavTab } from "../types";
+import { notificationsApi } from "../services/api";
+
+interface NotifItem {
+  id: number;
+  title: string;
+  message: string;
+  category: string;
+  is_read: boolean;
+}
 
 interface NavigationProps {
   activeTab: NavTab;
@@ -14,6 +23,73 @@ export const Navigation: React.FC<NavigationProps> = ({
 }) => {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
+
+  // Bug #7 — notification bell state
+  const [notifOpen, setNotifOpen] = useState(false);
+  const [notifications, setNotifications] = useState<NotifItem[]>([]);
+  const [notifLoading, setNotifLoading] = useState(false);
+  const notifRef = useRef<HTMLDivElement>(null);
+
+  const unreadCount = notifications.filter((n) => !n.is_read).length;
+
+  const DEMO_NOTIFICATIONS: NotifItem[] = [
+    { id: 1, title: "Exam Alert", message: "Operating Systems Mid-Term in 48 hours.", category: "Exam", is_read: false },
+    { id: 2, title: "Budget Advisory", message: "Daily spend target is ₹200. Stay on track!", category: "Budget", is_read: false },
+    { id: 3, title: "Placement Opportunity", message: "Stripe software intern application deadline approaching.", category: "Placement", is_read: false },
+  ];
+
+  // Close dropdown when clicking outside
+  useEffect(() => {
+    const handler = (e: MouseEvent) => {
+      if (notifRef.current && !notifRef.current.contains(e.target as Node)) {
+        setNotifOpen(false);
+      }
+    };
+    document.addEventListener("mousedown", handler);
+    return () => document.removeEventListener("mousedown", handler);
+  }, []);
+
+  const handleBellClick = async () => {
+    const opening = !notifOpen;
+    setNotifOpen(opening);
+    if (opening && notifications.length === 0) {
+      setNotifLoading(true);
+      try {
+        const data = await notificationsApi.getAll();
+        if (Array.isArray(data) && data.length > 0) {
+          setNotifications(data);
+        } else {
+          // Backend returned empty — use demo notifications
+          setNotifications(DEMO_NOTIFICATIONS);
+        }
+      } catch {
+        // Not logged in or backend offline — show demo notifications
+        setNotifications(DEMO_NOTIFICATIONS);
+      } finally {
+        setNotifLoading(false);
+      }
+    }
+  };
+
+  const handleMarkRead = async (id: number) => {
+    setNotifications((prev) =>
+      prev.map((n) => (n.id === id ? { ...n, is_read: true } : n))
+    );
+    try {
+      await notificationsApi.markRead(id);
+    } catch { /* offline — state already updated optimistically */ }
+  };
+
+  const handleMarkAllRead = () => {
+    setNotifications((prev) => prev.map((n) => ({ ...n, is_read: true })));
+  };
+
+  const categoryIcon: Record<string, string> = {
+    Exam: "school",
+    Budget: "payments",
+    Placement: "work",
+    default: "notifications",
+  };
 
   const mainNavItems: { id: NavTab; label: string; icon: string }[] = [
     { id: "dashboard", label: "Dashboard", icon: "dashboard" },
@@ -68,10 +144,72 @@ export const Navigation: React.FC<NavigationProps> = ({
               <span className="text-xs font-medium hidden sm:inline">Ask AI</span>
             </button>
 
-            <button className="p-2 rounded-full hover:bg-white/5 text-[#c7c4d8] transition-colors relative active:scale-95">
-              <span className="material-symbols-outlined text-lg">notifications</span>
-              <span className="absolute top-2 right-2 w-2 h-2 bg-[#c3c0ff] rounded-full border-2 border-[#131314]"></span>
-            </button>
+            {/* Bug #7 — Notification Bell with dropdown */}
+            <div className="relative" ref={notifRef}>
+              <button
+                id="notification-bell-btn"
+                onClick={handleBellClick}
+                className="p-2 rounded-full hover:bg-white/5 text-[#c7c4d8] transition-colors relative active:scale-95"
+                aria-label="Notifications"
+              >
+                <span className="material-symbols-outlined text-lg">notifications</span>
+                {unreadCount > 0 && (
+                  <span className="absolute top-1.5 right-1.5 w-2 h-2 bg-[#c3c0ff] rounded-full border-2 border-[#131314] animate-pulse" />
+                )}
+              </button>
+
+              {notifOpen && (
+                <div className="absolute right-0 top-12 w-80 bg-[#1a1a1e] border border-white/10 rounded-2xl shadow-2xl shadow-black/50 overflow-hidden z-50">
+                  <div className="flex items-center justify-between px-4 py-3 border-b border-white/10">
+                    <span className="text-xs font-bold text-white uppercase tracking-widest">Notifications</span>
+                    {unreadCount > 0 && (
+                      <button
+                        onClick={handleMarkAllRead}
+                        className="text-[10px] text-[#c3c0ff] hover:underline"
+                      >
+                        Mark all read
+                      </button>
+                    )}
+                  </div>
+
+                  <div className="max-h-72 overflow-y-auto">
+                    {notifLoading ? (
+                      <div className="flex items-center justify-center py-8 text-[#c7c4d8] text-xs gap-2">
+                        <span className="material-symbols-outlined text-sm animate-spin">autorenew</span>
+                        Loading…
+                      </div>
+                    ) : notifications.length === 0 ? (
+                      <div className="py-8 text-center text-xs text-[#c7c4d8]">No notifications yet.</div>
+                    ) : (
+                      notifications.map((n) => (
+                        <button
+                          key={n.id}
+                          onClick={() => handleMarkRead(n.id)}
+                          className={`w-full text-left px-4 py-3 flex items-start gap-3 border-b border-white/5 hover:bg-white/5 transition-colors ${n.is_read ? "opacity-50" : ""}`}
+                        >
+                          <div className={`w-7 h-7 flex-shrink-0 rounded-lg flex items-center justify-center mt-0.5 ${n.category === "Exam" ? "bg-amber-500/20 text-amber-300" : n.category === "Budget" ? "bg-emerald-500/20 text-emerald-300" : "bg-[#4f46e5]/20 text-[#c3c0ff]"}`}>
+                            <span className="material-symbols-outlined text-sm">{categoryIcon[n.category] || categoryIcon.default}</span>
+                          </div>
+                          <div className="flex-1 min-w-0">
+                            <p className="text-xs font-bold text-white leading-tight">{n.title}</p>
+                            <p className="text-[11px] text-[#c7c4d8] mt-0.5 leading-relaxed">{n.message}</p>
+                          </div>
+                          {!n.is_read && (
+                            <span className="w-1.5 h-1.5 rounded-full bg-[#c3c0ff] flex-shrink-0 mt-1.5" />
+                          )}
+                        </button>
+                      ))
+                    )}
+                  </div>
+
+                  {unreadCount === 0 && notifications.length > 0 && (
+                    <div className="px-4 py-2 text-center text-[10px] text-emerald-400">
+                      ✓ All caught up!
+                    </div>
+                  )}
+                </div>
+              )}
+            </div>
 
             <div
               onClick={() => setActiveTab("intelligence-score")}
@@ -155,6 +293,22 @@ export const Navigation: React.FC<NavigationProps> = ({
             >
               <span className="material-symbols-outlined text-lg">smart_toy</span>
               <span>AI Assistant</span>
+            </button>
+
+            {/* Bug #9 — Settings nav item */}
+            <button
+              onClick={() => {
+                setActiveTab("settings");
+                setMobileMenuOpen(false);
+              }}
+              className={`w-full flex items-center gap-3 px-4 py-2.5 rounded-xl text-xs font-semibold tracking-wide transition-all ${
+                activeTab === "settings"
+                  ? "text-[#c3c0ff] border-l-4 border-[#4f46e5] bg-[#4f46e5]/10 shadow-sm"
+                  : "text-[#c7c4d8] hover:bg-white/5 hover:text-white"
+              }`}
+            >
+              <span className={`material-symbols-outlined text-lg ${activeTab === "settings" ? "fill-1" : ""}`}>settings</span>
+              <span>Settings</span>
             </button>
 
             <button

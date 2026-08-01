@@ -10,9 +10,22 @@ import { BudgetView } from "./components/BudgetView";
 import { PlacementView } from "./components/PlacementView";
 import { RiskPredictionView } from "./components/RiskPredictionView";
 import { AskAiModal } from "./components/AskAiModal";
+import { SettingsView } from "./components/SettingsView";
+
+// Bug #9 — respect showLandingOnLoad setting from localStorage
+function getInitialTab(): NavTab {
+  try {
+    const settings = localStorage.getItem("compass_settings");
+    if (settings) {
+      const parsed = JSON.parse(settings);
+      if (parsed.showLandingOnLoad === false) return "dashboard";
+    }
+  } catch { /* ignore parse errors */ }
+  return "landing";
+}
 
 export function App() {
-  const [activeTab, setActiveTab] = useState<NavTab>("landing");
+  const [activeTab, setActiveTab] = useState<NavTab>(getInitialTab());
   const [askAiOpen, setAskAiOpen] = useState(false);
 
   return (
@@ -53,6 +66,9 @@ export function App() {
         {activeTab === "placement" && <PlacementView />}
 
         {activeTab === "risk-prediction" && <RiskPredictionView />}
+
+        {/* Bug #9 — Settings page */}
+        {activeTab === "settings" && <SettingsView />}
       </main>
 
       {/* Floating Ask AI Modal Dialog */}
