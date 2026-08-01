@@ -70,7 +70,22 @@ export const IntelligenceReportView: React.FC<IntelligenceReportViewProps> = ({
 
         <div className="flex items-center gap-4">
           <button
-            onClick={() => window.print()}
+            id="export-report-btn"
+            onClick={() => {
+              // Bug #8 — real JSON file download instead of print dialog
+              const blob = new Blob(
+                [JSON.stringify(report, null, 2)],
+                { type: "application/json" }
+              );
+              const url = URL.createObjectURL(blob);
+              const a = document.createElement("a");
+              a.href = url;
+              a.download = `student_intelligence_report_${new Date().toISOString().slice(0, 10)}.json`;
+              document.body.appendChild(a);
+              a.click();
+              document.body.removeChild(a);
+              URL.revokeObjectURL(url);
+            }}
             className="px-4 py-2 rounded-xl bg-white/5 hover:bg-white/10 border border-white/10 text-xs font-semibold text-white transition-all flex items-center gap-2"
           >
             <span className="material-symbols-outlined text-sm">download</span>

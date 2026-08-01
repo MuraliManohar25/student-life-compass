@@ -7,20 +7,50 @@ interface DashboardViewProps {
   onOpenAskAi: () => void;
 }
 
+const LS_TASKS_KEY = "compass_tasks";
+const LS_EVENTS_KEY = "compass_timeline_events";
+
+const DEFAULT_TASKS: MissionTask[] = [
+  { id: "1", title: "Complete DBMS Lab Assignment 4", completed: false, category: "Academic" },
+  { id: "2", title: "Solve 2 DSA Problems on LeetCode", completed: true, category: "Career" },
+  { id: "3", title: "Keep daily hostel spend below ₹150", completed: false, category: "Budget" },
+  { id: "4", title: "Submit application for Stripe Intern", completed: true, category: "Placement" },
+];
+
+const DEFAULT_EVENTS: TimelineEvent[] = [
+  { id: "e1", title: "Operating Systems Mid-Term", location: "Hall 302 • 10:00 AM", dueText: "In 2 Days", badgeColor: "error" },
+  { id: "e2", title: "TechFest Hackathon Deadline", location: "Online Submission", dueText: "Next Week", badgeColor: "primary" },
+  { id: "e3", title: "Cloud Arch Project Demo", location: "Lab B • 02:30 PM", dueText: "Apr 12", badgeColor: "secondary" },
+];
+
 export const DashboardView: React.FC<DashboardViewProps> = ({
   setActiveTab,
   onOpenAskAi,
 }) => {
-  const [tasks, setTasks] = useState<MissionTask[]>([
-    { id: "1", title: "Complete DBMS Lab Assignment 4", completed: false, category: "Academic" },
-    { id: "2", title: "Solve 2 DSA Problems on LeetCode", completed: true, category: "Career" },
-    { id: "3", title: "Keep daily hostel spend below ₹150", completed: false, category: "Budget" },
-    { id: "4", title: "Submit application for Stripe Intern", completed: true, category: "Placement" },
-  ]);
+  const [tasks, setTasks] = useState<MissionTask[]>(() => {
+    try {
+      const saved = localStorage.getItem(LS_TASKS_KEY);
+      return saved ? JSON.parse(saved) : DEFAULT_TASKS;
+    } catch { return DEFAULT_TASKS; }
+  });
+
+  const [timelineEvents, setTimelineEvents] = useState<TimelineEvent[]>(() => {
+    try {
+      const saved = localStorage.getItem(LS_EVENTS_KEY);
+      return saved ? JSON.parse(saved) : DEFAULT_EVENTS;
+    } catch { return DEFAULT_EVENTS; }
+  });
 
   const [newTaskTitle, setNewTaskTitle] = useState("");
   const [showAddTask, setShowAddTask] = useState(false);
   const [weeklyFilter, setWeeklyFilter] = useState<"week" | "month">("week");
+
+  // Horizon Events add form state (Bug #5)
+  const [showAddEvent, setShowAddEvent] = useState(false);
+  const [newEventTitle, setNewEventTitle] = useState("");
+  const [newEventLocation, setNewEventLocation] = useState("");
+  const [newEventDue, setNewEventDue] = useState("");
+  const [newEventColor, setNewEventColor] = useState<TimelineEvent["badgeColor"]>("primary");
 
   const [userName, setUserName] = useState("Murali");
   const [intelligenceScore, setIntelligenceScore] = useState(84);
@@ -29,30 +59,6 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
   const [budgetLimit, setBudgetLimit] = useState(200);
   const [academicIndex, setAcademicIndex] = useState(72);
   const [placementOdds, setPlacementOdds] = useState(68);
-
-  const [timelineEvents, setTimelineEvents] = useState<TimelineEvent[]>([
-    {
-      id: "e1",
-      title: "Operating Systems Mid-Term",
-      location: "Hall 302 • 10:00 AM",
-      dueText: "In 2 Days",
-      badgeColor: "error",
-    },
-    {
-      id: "e2",
-      title: "TechFest Hackathon Deadline",
-      location: "Online Submission",
-      dueText: "Next Week",
-      badgeColor: "primary",
-    },
-    {
-      id: "e3",
-      title: "Cloud Arch Project Demo",
-      location: "Lab B • 02:30 PM",
-      dueText: "Apr 12",
-      badgeColor: "secondary",
-    },
-  ]);
 
   const [rhythmActivity, setRhythmActivity] = useState<any[]>([
     { day: "Mon", val: 65, label: "2.5h" },
@@ -75,8 +81,13 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
         if (data.daily_budget_limit) setBudgetLimit(data.daily_budget_limit);
         if (data.academic_index) setAcademicIndex(data.academic_index);
         if (data.placement_odds) setPlacementOdds(data.placement_odds);
-        if (data.tasks && data.tasks.length > 0) setTasks(data.tasks);
-        if (data.timeline_events && data.timeline_events.length > 0) setTimelineEvents(data.timeline_events);
+        // Only use backend tasks/events if nothing is in localStorage
+        if (data.tasks && data.tasks.length > 0 && !localStorage.getItem(LS_TASKS_KEY)) {
+          setTasks(data.tasks);
+        }
+        if (data.timeline_events && data.timeline_events.length > 0 && !localStorage.getItem(LS_EVENTS_KEY)) {
+          setTimelineEvents(data.timeline_events);
+        }
         if (data.rhythm_activity && data.rhythm_activity.length > 0) setRhythmActivity(data.rhythm_activity);
       } catch (err) {
         console.warn("Using fallback live state for Dashboard:", err);
@@ -84,6 +95,16 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
     }
     loadDashboardData();
   }, []);
+
+  // Persist tasks to localStorage whenever they change (Bug #6)
+  useEffect(() => {
+    localStorage.setItem(LS_TASKS_KEY, JSON.stringify(tasks));
+  }, [tasks]);
+
+  // Persist events to localStorage whenever they change (Bug #5)
+  useEffect(() => {
+    localStorage.setItem(LS_EVENTS_KEY, JSON.stringify(timelineEvents));
+  }, [timelineEvents]);
 
   const toggleTask = (id: string) => {
     setTasks((prev) =>
@@ -102,7 +123,29 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
     setShowAddTask(false);
   };
 
+  // Bug #5 — add timeline event handler
+  const handleAddEvent = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!newEventTitle.trim()) return;
+    setTimelineEvents((prev) => [
+      ...prev,
+      {
+        id: `e${Date.now()}`,
+        title: newEventTitle,
+        location: newEventLocation || "TBD",
+        dueText: newEventDue || "Upcoming",
+        badgeColor: newEventColor,
+      },
+    ]);
+    setNewEventTitle("");
+    setNewEventLocation("");
+    setNewEventDue("");
+    setNewEventColor("primary");
+    setShowAddEvent(false);
+  };
+
   const completedCount = tasks.filter((t) => t.completed).length;
+
 
   return (
     <div className="min-h-screen pt-20 pb-12 px-4 md:px-8 max-w-7xl mx-auto space-y-8">
@@ -414,15 +457,68 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
               <span className="material-symbols-outlined text-[#c3c0ff]">timeline</span>
               <span>Horizon Events</span>
             </h3>
-            <button
-              onClick={() => setActiveTab("study-planner")}
-              className="text-xs text-[#c3c0ff] hover:underline"
-            >
-              Full Calendar
-            </button>
+            <div className="flex items-center gap-2">
+              <button
+                id="add-horizon-event-btn"
+                onClick={() => setShowAddEvent(!showAddEvent)}
+                title="Add new event"
+                className="p-1 rounded-lg bg-white/5 hover:bg-white/10 text-[#c3c0ff] transition-colors"
+              >
+                <span className="material-symbols-outlined text-sm">add</span>
+              </button>
+              <button
+                onClick={() => setActiveTab("study-planner")}
+                className="text-xs text-[#c3c0ff] hover:underline"
+              >
+                Full Calendar
+              </button>
+            </div>
           </div>
 
-          <div className="space-y-3">
+          {/* Add Event Form (Bug #5) */}
+          {showAddEvent && (
+            <form onSubmit={handleAddEvent} className="space-y-2 p-3 rounded-xl bg-white/5 border border-[#4f46e5]/30">
+              <input
+                type="text"
+                value={newEventTitle}
+                onChange={(e) => setNewEventTitle(e.target.value)}
+                placeholder="Event title (e.g. Math Final Exam)"
+                required
+                className="w-full bg-white/5 border border-white/10 rounded-lg px-3 py-1.5 text-xs text-white focus:outline-none focus:border-[#4f46e5] placeholder-white/30"
+              />
+              <div className="flex gap-2">
+                <input
+                  type="text"
+                  value={newEventLocation}
+                  onChange={(e) => setNewEventLocation(e.target.value)}
+                  placeholder="Location (e.g. Hall 101)"
+                  className="flex-1 bg-white/5 border border-white/10 rounded-lg px-3 py-1.5 text-xs text-white focus:outline-none focus:border-[#4f46e5] placeholder-white/30"
+                />
+                <input
+                  type="text"
+                  value={newEventDue}
+                  onChange={(e) => setNewEventDue(e.target.value)}
+                  placeholder="Due (e.g. In 3 Days)"
+                  className="flex-1 bg-white/5 border border-white/10 rounded-lg px-3 py-1.5 text-xs text-white focus:outline-none focus:border-[#4f46e5] placeholder-white/30"
+                />
+              </div>
+              <div className="flex items-center gap-2">
+                <select
+                  value={newEventColor}
+                  onChange={(e) => setNewEventColor(e.target.value as TimelineEvent["badgeColor"])}
+                  className="bg-white/5 border border-white/10 rounded-lg px-2 py-1.5 text-xs text-white focus:outline-none flex-1"
+                >
+                  <option value="primary">🟣 Default</option>
+                  <option value="error">🔴 Urgent</option>
+                  <option value="secondary">🔵 Info</option>
+                </select>
+                <button type="submit" className="px-4 py-1.5 bg-[#4f46e5] text-white text-xs font-bold rounded-lg hover:brightness-110">Add</button>
+                <button type="button" onClick={() => setShowAddEvent(false)} className="px-3 py-1.5 bg-white/5 border border-white/10 text-xs text-[#c7c4d8] rounded-lg hover:text-white">Cancel</button>
+              </div>
+            </form>
+          )}
+
+          <div className="space-y-3 max-h-64 overflow-y-auto pr-1">
             {timelineEvents.map((evt) => (
               <div
                 key={evt.id}

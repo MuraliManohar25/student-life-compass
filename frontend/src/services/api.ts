@@ -149,3 +149,19 @@ export const aiApi = {
     return res.data;
   },
 };
+
+// Notifications API (Bug #7)
+export const notificationsApi = {
+  getAll: async () => {
+    const res = await apiClient.get('/notifications');
+    return res.data;
+  },
+  markRead: async (id: number) => {
+    const res = await apiClient.put(`/notifications/${id}/read`);
+    return res.data;
+  },
+  generateDefaults: async () => {
+    const res = await apiClient.post('/notifications/generate');
+    return res.data;
+  },
+};

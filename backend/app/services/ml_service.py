@@ -2,9 +2,11 @@ import os
 import joblib
 import numpy as np
 
-BUDGET_MODEL_PATH = "backend/ml/saved_models/budget_linear_model.joblib"
-RISK_MODEL_PATH = "backend/ml/saved_models/academic_risk_rf_model.joblib"
-PLACEMENT_MODEL_PATH = "backend/ml/saved_models/placement_gb_model.joblib"
+# Resolve paths relative to this file so they work regardless of where uvicorn is started from
+_BASE_DIR = os.path.dirname(os.path.abspath(__file__))
+BUDGET_MODEL_PATH = os.path.join(_BASE_DIR, "../../ml/saved_models/budget_linear_model.joblib")
+RISK_MODEL_PATH = os.path.join(_BASE_DIR, "../../ml/saved_models/academic_risk_rf_model.joblib")
+PLACEMENT_MODEL_PATH = os.path.join(_BASE_DIR, "../../ml/saved_models/placement_gb_model.joblib")
 
 class MLService:
     def __init__(self):
