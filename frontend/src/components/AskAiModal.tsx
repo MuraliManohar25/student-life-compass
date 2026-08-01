@@ -34,11 +34,22 @@ export const AskAiModal: React.FC<AskAiModalProps> = ({
     setLoading(true);
 
     try {
-      const data = await aiApi.ask(userText, {
-        career: "AI Engineer",
-        score: "84%",
-        activeTab,
-      });
+      let profileContext: any = { activeTab };
+      try {
+        const { profileApi } = await import("../services/api");
+        const profile = await profileApi.getProfile();
+        if (profile) {
+          profileContext = {
+            target_role: profile.target_role,
+            market_match_index: profile.market_match_index,
+            current_gpa: profile.current_gpa,
+            college: profile.college,
+            activeTab,
+          };
+        }
+      } catch { /* use basic activeTab context */ }
+
+      const data = await aiApi.ask(userText, profileContext);
       setMessages((prev) => [
         ...prev,
         { sender: "ai", text: data.reply || "I am processing your query based on your student index." },
@@ -49,7 +60,7 @@ export const AskAiModal: React.FC<AskAiModalProps> = ({
         ...prev,
         {
           sender: "ai",
-          text: "I analyzed your current schedule: focus on DBMS and Operating Systems to keep your top 15% cohort rank.",
+          text: "I couldn't reach the AI service right now. Please try again.",
         },
       ]);
     } finally {

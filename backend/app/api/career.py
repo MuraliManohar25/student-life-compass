@@ -34,6 +34,13 @@ def career_chat(
     db: Session = Depends(get_db)
 ):
     profile = db.query(Profile).filter(Profile.user_id == current_user.id).first()
-    target_role = profile.target_role if profile else "AI Engineer"
-    reply = gemini_service.chat_dialogue(req.prompt, target_role)
+    target_role = profile.target_role if (profile and profile.target_role) else "AI Engineer"
+    profile_dict = {
+        "college": profile.college if profile else "",
+        "major": profile.major if profile else "",
+        "current_gpa": profile.current_gpa if profile else 0.0,
+        "target_gpa": profile.target_gpa if profile else 0.0,
+        "market_match_index": profile.market_match_index if profile else 0.0,
+    }
+    reply = gemini_service.chat_dialogue(req.prompt, target_role, profile_data=profile_dict)
     return {"reply": reply, "source": "gemini-ai"}

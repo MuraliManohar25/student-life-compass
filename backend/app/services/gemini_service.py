@@ -118,35 +118,37 @@ class GeminiService:
             "resources": resources
         }
 
-    def chat_dialogue(self, prompt: str, target_role: str = "AI Engineer") -> str:
+    def chat_dialogue(self, prompt: str, target_role: str = "AI Engineer", profile_data: dict = None) -> str:
         # Check if Gemini API Key is available to perform live call
         if self.api_key:
             try:
                 import google.generativeai as genai
                 genai.configure(api_key=self.api_key)
-                model = genai.GenerativeModel('gemini-1.5-flash')
+                model = genai.GenerativeModel('gemini-2.5-flash')
+                ctx_str = f"Student Target Role: {target_role}. Profile Context: {profile_data if profile_data else 'Standard'}"
                 response = model.generate_content(
-                    f"You are an elite AI Career Mentor for a university student targeting the role '{target_role}'. Prompt: {prompt}"
+                    f"You are an elite AI Career Mentor for a university student. {ctx_str}\nPrompt: {prompt}"
                 )
                 if response and response.text:
                     return response.text
             except Exception as e:
                 print(f"Gemini API call failed: {e}")
 
-        # Intelligent Fallback response
+        # Intelligent Fallback response (No fake stats)
+        role_title = target_role or "technical"
         if "docker" in prompt.lower():
-            return f"Your Python and ML scores are exceptional (88%). However, top {target_role} roles at Google and Stripe require Docker deployment and PyTorch model quantization. I've scheduled a 45-minute Docker lab for you today!"
+            return f"Top {role_title} roles require containerized deployment and system architecture skills. Focus on hands-on Docker labs and deployment pipelines."
         elif "interview" in prompt.lower():
-            return f"To excel in {target_role} technical interviews, focus on system design for model inference, latency optimization (ONNX), and core DSA data structures like Trees & Graphs."
+            return f"To excel in {role_title} technical interviews, focus on system design, performance optimization, and core DSA algorithms."
         else:
-            return f"Based on your current academic profile (Score: 84%), prioritizing {target_role} hands-on projects and Docker containerization will raise your market readiness index to 92%."
+            return f"Prioritizing hands-on projects and practical skill application for {role_title} will strengthen your overall readiness."
 
     def ask_assistant(self, prompt: str, context: dict = None) -> str:
         if self.api_key:
             try:
                 import google.generativeai as genai
                 genai.configure(api_key=self.api_key)
-                model = genai.GenerativeModel('gemini-1.5-flash')
+                model = genai.GenerativeModel('gemini-2.5-flash')
                 sys_inst = "You are Compass AI, a high-performance university student advisor. Provide concise, actionable, encouraging advice on study planning, career development, interview prep, skill building, and budget optimization."
                 res = model.generate_content(f"{sys_inst}\n\nStudent Query: {prompt}\nContext: {context}")
                 if res and res.text:
@@ -155,10 +157,10 @@ class GeminiService:
                 print(f"Gemini AI Assistant error: {e}")
 
         if "exam" in prompt.lower() or "os" in prompt.lower():
-            return "For Operating Systems, prioritize Virtual Memory, Paging, Process Scheduling (Round Robin/CFS), and Deadlock Prevention (Banker's Algorithm). Allocate 2 hours of active recall practice today."
+            return "For Operating Systems, prioritize Virtual Memory, Paging, Process Scheduling (Round Robin/CFS), and Deadlock Prevention (Banker's Algorithm). Allocate active recall practice today."
         elif "budget" in prompt.lower() or "canteen" in prompt.lower():
-            return "Your hostel budget runway is healthy (₹1,640 remaining). Avoid late-night food deliveries to save an extra ₹400 this week."
+            return "Keep track of daily expenses and limit late-night delivery fees to maintain a healthy monthly budget runway."
         else:
-            return "Based on your academic profile, your study workload peaks in 48 hours. Completing your DBMS lab tonight will keep you in the top 15% of your cohort."
+            return "Based on your academic workload, prioritizing high-impact assignments tonight will keep you on track."
 
 gemini_service = GeminiService()

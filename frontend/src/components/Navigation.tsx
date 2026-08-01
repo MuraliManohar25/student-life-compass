@@ -125,14 +125,6 @@ export const Navigation: React.FC<NavigationProps> = ({
                 className="bg-white/5 border border-white/10 rounded-full pl-10 pr-4 py-1.5 text-xs text-[#e5e2e3] w-60 md:w-72 focus:outline-none focus:border-[#4f46e5]/50 focus:bg-white/10 transition-all"
               />
             </div>
-            {/* Landing page jump link */}
-            <button
-              onClick={() => setActiveTab("landing")}
-              className="hidden lg:flex items-center gap-1.5 text-xs text-[#c7c4d8] hover:text-[#c3c0ff] px-3 py-1 rounded-full border border-white/10 hover:border-white/20 transition-all"
-            >
-              <span className="material-symbols-outlined text-sm">home</span>
-              <span>Landing Page</span>
-            </button>
           </div>
 
           <div className="flex items-center gap-3 md:gap-4">
@@ -237,7 +229,7 @@ export const Navigation: React.FC<NavigationProps> = ({
           <div className="px-6 mb-8 flex items-center justify-between">
             <div>
               <button
-                onClick={() => setActiveTab("landing")}
+                onClick={() => setActiveTab("dashboard")}
                 className="font-headline font-black text-xl text-[#c3c0ff] tracking-tight hover:opacity-90 transition-opacity text-left block"
               >
                 Compass AI
@@ -311,16 +303,6 @@ export const Navigation: React.FC<NavigationProps> = ({
               <span>Settings</span>
             </button>
 
-            <button
-              onClick={() => {
-                setActiveTab("landing");
-                setMobileMenuOpen(false);
-              }}
-              className="w-full flex items-center gap-3 px-4 py-2.5 rounded-xl text-xs font-semibold text-[#c7c4d8] hover:bg-white/5 hover:text-white transition-all"
-            >
-              <span className="material-symbols-outlined text-lg">preview</span>
-              <span>Public Landing Page</span>
-            </button>
 
             <button
               onClick={() => {

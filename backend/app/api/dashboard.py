@@ -14,6 +14,7 @@ def get_dashboard(
 ):
     profile = db.query(Profile).filter(Profile.user_id == current_user.id).first()
     expenses = db.query(Expense).filter(Expense.user_id == current_user.id).all()
+    total_spent = sum(e.amount for e in expenses)
     sessions = db.query(StudySession).filter(StudySession.user_id == current_user.id).all()
 
     from app.models.models import BudgetPrediction
