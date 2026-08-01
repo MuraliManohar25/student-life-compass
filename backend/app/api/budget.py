@@ -1,6 +1,8 @@
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
 from typing import List
+import calendar
+from datetime import datetime
 from app.core.database import get_db
 from app.core.security import get_current_user
 from app.models.models import User, Expense, BudgetPrediction
@@ -63,10 +65,15 @@ def get_budget_summary(
     food_ratio = food_spent / max(1.0, total_spent)
     academic_ratio = academic_spent / max(1.0, total_spent)
 
+    # Compute actual date values from current month
+    now = datetime.utcnow()
+    total_days = calendar.monthrange(now.year, now.month)[1]
+    days_elapsed = now.day
+
     ml_prediction = ml_service.predict_budget(
         daily_avg=daily_avg,
-        days_elapsed=20,
-        total_days=30,
+        days_elapsed=days_elapsed,
+        total_days=total_days,
         food_ratio=food_ratio,
         academic_ratio=academic_ratio
     )

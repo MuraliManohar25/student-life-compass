@@ -21,7 +21,8 @@ def predict_academic_risk(
 
     sleep_hrs = profile.sleep_hours if profile else 6.2
     gpa = profile.current_gpa if profile else 3.88
-    workload = 62.0
+    # Compute workload density from real data (normalized to 0-100 scale)
+    workload = min(100.0, ((pending_assignments or 0) * 15 + (upcoming_exams or 0) * 20))
 
     result = ml_service.predict_academic_risk(
         workload_density=workload,

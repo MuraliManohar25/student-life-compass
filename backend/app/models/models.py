@@ -39,6 +39,9 @@ class Profile(Base):
     target_role = Column(String, default="AI Engineer")
     market_match_index = Column(Float, default=84.0)
     sleep_hours = Column(Float, default=6.2)
+    resume_score = Column(Float, default=75.0)
+    dsa_solved = Column(Integer, default=50)
+    github_commits = Column(Integer, default=20)
     created_at = Column(DateTime, default=datetime.utcnow)
     updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
 

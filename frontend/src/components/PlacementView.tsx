@@ -16,6 +16,10 @@ export const PlacementView: React.FC = () => {
     "Resume passed AI screening with top marks for Backend & ML roles."
   ]);
 
+  const [companyInput, setCompanyInput] = useState("");
+  const [roleInput, setRoleInput] = useState("");
+  const [statusInput, setStatusInput] = useState("Applied");
+
   useEffect(() => {
     async function loadPlacementData() {
       try {
@@ -30,6 +34,44 @@ export const PlacementView: React.FC = () => {
     }
     loadPlacementData();
   }, []);
+
+  const handleAddApplication = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!companyInput || !roleInput) return;
+
+    const newCompany = companyInput;
+    const newRole = roleInput;
+    const newStatus = statusInput;
+
+    setCompanyInput("");
+    setRoleInput("");
+    setStatusInput("Applied");
+
+    // Optimistic UI update
+    const newItem = {
+      company: newCompany,
+      role: newRole,
+      match: "85%",
+      status: newStatus,
+      color: newStatus === "Interviewing" ? "bg-purple-500/20 text-purple-300" : "bg-[#4f46e5]/20 text-[#c3c0ff]"
+    };
+
+    setJobApplications((prev) => [newItem, ...prev]);
+
+    try {
+      await placementApi.addApplication({
+        company: newCompany,
+        role: newRole,
+        status: newStatus,
+        match_percentage: 85.0
+      });
+      // Reload to get server-side data
+      const data = await placementApi.getReadiness();
+      if (data.applications && data.applications.length > 0) setJobApplications(data.applications);
+    } catch (err) {
+      console.warn("Failed to persist application:", err);
+    }
+  };
 
   return (
     <div className="min-h-screen pt-20 pb-12 px-4 md:px-8 max-w-7xl mx-auto space-y-8">
@@ -80,7 +122,54 @@ export const PlacementView: React.FC = () => {
 
       {/* Applications List */}
       <div className="glass-card p-6 rounded-2xl border border-white/10 space-y-4">
-        <h3 className="font-headline font-bold text-lg text-white">Target Tech Applications</h3>
+        <div className="flex justify-between items-center">
+          <h3 className="font-headline font-bold text-lg text-white">Target Tech Applications</h3>
+        </div>
+
+        {/* Add Application Form */}
+        <form onSubmit={handleAddApplication} className="space-y-3 pb-4 border-b border-white/10">
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+            <div>
+              <label className="text-xs text-[#c7c4d8]">Company</label>
+              <input
+                type="text"
+                value={companyInput}
+                onChange={(e) => setCompanyInput(e.target.value)}
+                placeholder="e.g. Google"
+                className="w-full mt-1 bg-white/5 border border-white/10 rounded-xl px-3 py-2 text-xs text-white focus:outline-none focus:border-[#c3c0ff]"
+              />
+            </div>
+            <div>
+              <label className="text-xs text-[#c7c4d8]">Role</label>
+              <input
+                type="text"
+                value={roleInput}
+                onChange={(e) => setRoleInput(e.target.value)}
+                placeholder="e.g. Software Engineer"
+                className="w-full mt-1 bg-white/5 border border-white/10 rounded-xl px-3 py-2 text-xs text-white focus:outline-none focus:border-[#c3c0ff]"
+              />
+            </div>
+            <div>
+              <label className="text-xs text-[#c7c4d8]">Status</label>
+              <select
+                value={statusInput}
+                onChange={(e) => setStatusInput(e.target.value)}
+                className="w-full mt-1 bg-[#131314] border border-white/10 rounded-xl px-3 py-2 text-xs text-white focus:outline-none focus:border-[#c3c0ff]"
+              >
+                <option value="Applied">Applied</option>
+                <option value="Resume Screened">Resume Screened</option>
+                <option value="Interviewing">Interviewing</option>
+                <option value="Offered">Offered</option>
+              </select>
+            </div>
+          </div>
+          <button
+            type="submit"
+            className="w-full py-2.5 bg-[#4f46e5] text-white font-bold text-xs rounded-xl hover:brightness-110 transition-all"
+          >
+            Track New Application
+          </button>
+        </form>
 
         <div className="space-y-3">
           {jobApplications.map((app, i) => (

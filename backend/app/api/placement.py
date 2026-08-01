@@ -2,7 +2,7 @@ from fastapi import APIRouter, Depends
 from sqlalchemy.orm import Session
 from app.core.database import get_db
 from app.core.security import get_current_user
-from app.models.models import User, PlacementProgress, Project
+from app.models.models import User, PlacementProgress, Project, Profile, Skill
 from app.schemas.schemas import PlacementReadinessResponse, PlacementAppCreate
 from app.services.ml_service import ml_service
 
@@ -15,6 +15,8 @@ def get_placement_readiness(
 ):
     apps = db.query(PlacementProgress).filter(PlacementProgress.user_id == current_user.id).all()
     projects = db.query(Project).filter(Project.user_id == current_user.id).all()
+    profile = db.query(Profile).filter(Profile.user_id == current_user.id).first()
+    skills = db.query(Skill).filter(Skill.profile_id == profile.id).all() if profile else []
 
     app_list = []
     for a in apps:
@@ -26,12 +28,18 @@ def get_placement_readiness(
             "color": "bg-purple-500/20 text-purple-300" if a.status == "Interviewing" else "bg-[#4f46e5]/20 text-[#c3c0ff]"
         })
 
+    # Derive values from real user data
+    resume_score = profile.resume_score if profile else 75.0
+    dsa_solved = profile.dsa_solved if profile else 50
+    github_commits = profile.github_commits if profile else 20
+    skill_match = sum(s.proficiency_score for s in skills) / len(skills) if skills else 75.0
+
     ml_readiness = ml_service.predict_placement_readiness(
-        resume_score=88.0,
-        dsa_solved=140,
+        resume_score=resume_score,
+        dsa_solved=dsa_solved,
         projects_count=len(projects) or 3,
-        github_commits=45,
-        skill_match=85.0
+        github_commits=github_commits,
+        skill_match=skill_match
     )
 
     ml_readiness["applications"] = app_list
