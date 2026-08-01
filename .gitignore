@@ -1,25 +1,18 @@
-# Environment variables
-.env
-.env.*
-
-# Database files
-*.db
-*.sqlite
-*.sqlite3
-
-# Python cache
+# Python
 __pycache__/
 *.py[cod]
-*$py.class
-*.so
+*.pyo
 
-# Node modules
+# Virtual environments
+venv/
+.env
+
+# VS Code
+.vscode/
+
+# Node
 node_modules/
 
-# IDE
-.vscode/
-.idea/
-
-# OS
-.DS_Store
-Thumbs.db
+# Build
+dist/
+build/
