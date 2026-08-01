@@ -137,6 +137,9 @@ class BudgetSummaryResponse(BaseModel):
     forecast_confidence: float
     suggestions: List[str]
 
+class RemainingBudgetResponse(BaseModel):
+    remaining_budget: float
+
 # Placement Schemas
 class PlacementAppCreate(BaseModel):
     company: str

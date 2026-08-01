@@ -7,6 +7,7 @@ export type NavTab =
   | "intelligence-score"
   | "study-planner"
   | "budget"
+  | "nearby-places"
   | "placement"
   | "risk-prediction"
   | "utilities"

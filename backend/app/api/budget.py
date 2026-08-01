@@ -6,10 +6,21 @@ from datetime import datetime
 from app.core.database import get_db
 from app.core.security import get_current_user
 from app.models.models import User, Expense, BudgetPrediction
-from app.schemas.schemas import ExpenseCreate, ExpenseOut, BudgetSummaryResponse
+from app.schemas.schemas import ExpenseCreate, ExpenseOut, BudgetSummaryResponse, RemainingBudgetResponse
 from app.services.ml_service import ml_service
 
 router = APIRouter(prefix="/budget", tags=["Budget Manager"])
+
+@router.get("/remaining-budget", response_model=RemainingBudgetResponse)
+def get_remaining_budget(
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db)
+):
+    """Expose the user's persisted budget runway for map affordability labels."""
+    budget_pred = db.query(BudgetPrediction).filter(BudgetPrediction.user_id == current_user.id).first()
+    if not budget_pred:
+        raise HTTPException(status_code=404, detail="Budget prediction not found")
+    return {"remaining_budget": budget_pred.remaining_budget}
 
 @router.get("/expenses", response_model=List[ExpenseOut])
 def get_expenses(

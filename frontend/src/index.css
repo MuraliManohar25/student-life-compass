@@ -1,4 +1,5 @@
 @import "tailwindcss";
+@import "leaflet/dist/leaflet.css";
 
 @layer base {
   body {
@@ -84,6 +85,19 @@
   animation: pulseSlow 8s ease-in-out infinite;
 }
 
+.nearby-map .leaflet-control-attribution {
+  background: rgba(19, 19, 20, 0.82);
+  color: #c7c4d8;
+}
+
+.nearby-map .leaflet-control-attribution a { color: #c3c0ff; }
+.nearby-map .leaflet-popup-content-wrapper,
+.nearby-map .leaflet-popup-tip { background: #1a1a1e; color: #e5e2e3; }
+.nearby-map .leaflet-popup-content { margin: 14px; }
+.nearby-map .leaflet-container { font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif; }
+.map-pin { background: #4f46e5; border: 3px solid #fff; border-radius: 999px; box-shadow: 0 0 0 4px rgba(79, 70, 229, .25); }
+.map-user-pin { background: #10b981; border: 3px solid #fff; border-radius: 999px; box-shadow: 0 0 0 5px rgba(16, 185, 129, .25); }
+
 @media print {
   header, aside, #export-report-btn, nav {
     display: none !important;
@@ -104,4 +118,3 @@
     break-inside: avoid;
   }
 }
-

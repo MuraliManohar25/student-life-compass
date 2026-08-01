@@ -129,6 +129,10 @@ export const budgetApi = {
     const res = await apiClient.get('/budget/summary');
     return res.data;
   },
+  getRemainingBudget: async () => {
+    const res = await apiClient.get('/budget/remaining-budget');
+    return res.data as { remaining_budget: number };
+  },
 };
 
 // Placement Readiness API

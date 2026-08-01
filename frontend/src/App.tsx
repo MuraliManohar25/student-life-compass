@@ -7,6 +7,7 @@ import { CareerMentorView } from "./components/CareerMentorView";
 import { IntelligenceReportView } from "./components/IntelligenceReportView";
 import { StudyPlannerView } from "./components/StudyPlannerView";
 import { BudgetView } from "./components/BudgetView";
+import { NearbyPlacesView } from "./components/NearbyPlacesView";
 import { PlacementView } from "./components/PlacementView";
 import { RiskPredictionView } from "./components/RiskPredictionView";
 import { AskAiModal } from "./components/AskAiModal";
@@ -142,6 +143,8 @@ export function App() {
         {activeTab === "study-planner" && <StudyPlannerView />}
 
         {activeTab === "budget" && <BudgetView />}
+
+        {activeTab === "nearby-places" && <NearbyPlacesView />}
 
         {activeTab === "placement" && <PlacementView />}
 
