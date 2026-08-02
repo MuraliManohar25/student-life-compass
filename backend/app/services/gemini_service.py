@@ -127,7 +127,7 @@ class GeminiService:
                 model = genai.GenerativeModel('gemini-3.5-flash')
                 ctx_str = f"Student Target Role: {target_role}. Profile Context: {profile_data if profile_data else 'Standard'}"
                 response = model.generate_content(
-                    f"You are an elite AI Career Mentor for a university student. {ctx_str}\nPrompt: {prompt}"
+                    f"You are an elite AI Career Mentor for a university student. {ctx_str}\nKeep responses concise and use short bullet points where appropriate.\nPrompt: {prompt}"
                 )
                 if response and response.text:
                     return response.text

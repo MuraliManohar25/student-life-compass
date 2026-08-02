@@ -1,5 +1,7 @@
 import React, { useState } from "react";
 import { ChatMessage } from "../../types";
+import { aiApi } from "../../services/api";
+import ReactMarkdown from "react-markdown";
 
 interface CareerChatbotProps {
   roleTitle: string;
@@ -15,29 +17,51 @@ export const CareerChatbot: React.FC<CareerChatbotProps> = ({ roleTitle }) => {
       text: `Hello! I am your AI Career Mentor. Ask me anything about becoming a successful ${roleTitle}!`,
     },
   ]);
+  const [loading, setLoading] = useState(false);
 
-  // TODO: Replace this mock response handler with real Gemini API call POST /api/career/chat
-  const handleSend = (e: React.FormEvent) => {
+  const handleSend = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!input.trim()) return;
+    if (!input.trim() || loading) return;
 
-    const userMsg: ChatMessage = { id: Date.now().toString(), sender: "user", text: input };
+    const userText = input;
+    const userMsg: ChatMessage = { id: Date.now().toString(), sender: "user", text: userText };
     setMessages((prev) => [...prev, userMsg]);
-
-    const userText = input.toLowerCase();
     setInput("");
+    setLoading(true);
 
-    // Simulate AI response logic
-    setTimeout(() => {
-      let botResponse = `To excel as a ${roleTitle}, focus on mastering foundational concepts first, building 2-3 portfolio projects, and practicing problem solving daily!`;
-      if (userText.includes("how") || userText.includes("start") || userText.includes("become")) {
-        botResponse = `Start with core programming fundamentals in Python/JS, learn database queries in SQL, build hands-on projects, and gain practical experience with open source!`;
-      } else if (userText.includes("salary") || userText.includes("pay") || userText.includes("job")) {
-        botResponse = `Entry-level ${roleTitle} positions offer competitive salaries. Key differentiators include strong project portfolios and clean Git commits.`;
-      }
+    try {
+      let profileContext: any = { roleTitle };
+      try {
+        const { profileApi } = await import("../../services/api");
+        const profile = await profileApi.getProfile();
+        if (profile) {
+          profileContext = {
+            target_role: profile.target_role,
+            current_gpa: profile.current_gpa,
+            college: profile.college,
+            roleTitle,
+          };
+        }
+      } catch { /* use basic roleTitle context */ }
 
-      setMessages((prev) => [...prev, { id: (Date.now() + 1).toString(), sender: "mentor", text: botResponse }]);
-    }, 500);
+      const data = await aiApi.ask(userText, profileContext);
+      setMessages((prev) => [
+        ...prev,
+        { id: (Date.now() + 1).toString(), sender: "mentor", text: data.reply || "I am processing your career query." },
+      ]);
+    } catch (err) {
+      console.error(err);
+      setMessages((prev) => [
+        ...prev,
+        {
+          id: (Date.now() + 1).toString(),
+          sender: "mentor",
+          text: "I couldn't reach the AI service right now. Please try again.",
+        },
+      ]);
+    } finally {
+      setLoading(false);
+    }
   };
 
   return (
@@ -58,10 +82,24 @@ export const CareerChatbot: React.FC<CareerChatbotProps> = ({ roleTitle }) => {
                   : "bg-white/5 border border-white/10 text-white/90 rounded-bl-none"
               }`}
             >
-              {msg.text}
+              {msg.sender === "user" ? (
+                msg.text
+              ) : (
+                <div className="prose prose-invert prose-xs max-w-none">
+                  <ReactMarkdown>{msg.text}</ReactMarkdown>
+                </div>
+              )}
             </div>
           </div>
         ))}
+        {loading && (
+          <div className="flex justify-start">
+            <div className="bg-white/5 border border-white/10 p-3 rounded-xl rounded-bl-none text-xs text-white/70 flex items-center gap-2">
+              <span className="material-symbols-outlined text-sm animate-spin">progress_activity</span>
+              Analyzing...
+            </div>
+          </div>
+        )}
       </div>
 
       {/* Input Form */}
@@ -73,7 +111,7 @@ export const CareerChatbot: React.FC<CareerChatbotProps> = ({ roleTitle }) => {
           placeholder={`Ask AI about ${roleTitle}...`}
           className="flex-1 bg-white/5 border border-white/10 rounded-xl px-3 py-2 text-xs text-white focus:outline-none focus:border-[#4f46e5]"
         />
-        <button type="submit" className="px-4 py-2 bg-[#4f46e5] text-white text-xs font-bold rounded-xl hover:brightness-110">
+        <button type="submit" disabled={loading} className="px-4 py-2 bg-[#4f46e5] text-white text-xs font-bold rounded-xl hover:brightness-110 disabled:opacity-50">
           Send
         </button>
       </form>

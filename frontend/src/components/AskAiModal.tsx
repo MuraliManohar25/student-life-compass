@@ -1,6 +1,7 @@
 import React, { useState } from "react";
 import { NavTab } from "../types";
 import { aiApi } from "../services/api";
+import ReactMarkdown from "react-markdown";
 
 interface AskAiModalProps {
   isOpen: boolean;
@@ -121,7 +122,13 @@ export const AskAiModal: React.FC<AskAiModalProps> = ({
                     : "bg-white/5 border border-white/10 text-[#e5e2e3] rounded-tl-none"
                 }`}
               >
-                {msg.text}
+              {msg.sender === "user" ? (
+                msg.text
+              ) : (
+                <div className="prose prose-invert prose-sm max-w-none">
+                  <ReactMarkdown>{msg.text}</ReactMarkdown>
+                </div>
+              )}
               </div>
             </div>
           ))}
