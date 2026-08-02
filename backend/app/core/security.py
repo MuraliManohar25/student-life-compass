@@ -17,7 +17,7 @@ def verify_password(plain_password: str, hashed_password: str) -> bool:
         hashed_bytes = hashed_password.encode("utf-8")
         return bcrypt.checkpw(plain_bytes, hashed_bytes)
     except Exception:
-        return plain_password == hashed_password
+        return False
 
 def get_password_hash(password: str) -> str:
     pwd_bytes = password.encode("utf-8")[:72]
@@ -40,20 +40,19 @@ def get_current_user_optional(
 ):
     from app.models.models import User
     if not token:
-        default_user = db.query(User).first()
-        return default_user
+        return None
 
     try:
         payload = jwt.decode(token, settings.SECRET_KEY, algorithms=[settings.ALGORITHM])
         email: str = payload.get("sub")
         if email is None:
-            return db.query(User).first()
+            return None
     except Exception:
-        return db.query(User).first()
+        return None
 
     user = db.query(User).filter(User.email == email).first()
     if user is None:
-        return db.query(User).first()
+        return None
     return user
 
 def get_current_user(

@@ -98,7 +98,6 @@ export const Navigation: React.FC<NavigationProps> = ({
     { id: "study-planner", label: "Study Planner", icon: "event_note" },
     { id: "budget", label: "Budget", icon: "payments" },
     { id: "nearby-places", label: "Nearby Places", icon: "map" },
-    { id: "placement", label: "Placement", icon: "work" },
     { id: "risk-prediction", label: "Risk Prediction", icon: "warning" },
   ];
 

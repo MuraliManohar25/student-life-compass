@@ -8,7 +8,6 @@ export type NavTab =
   | "study-planner"
   | "budget"
   | "nearby-places"
-  | "placement"
   | "risk-prediction"
   | "utilities"
   | "settings";

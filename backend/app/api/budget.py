@@ -16,11 +16,9 @@ def get_remaining_budget(
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db)
 ):
-    """Expose the user's persisted budget runway for map affordability labels."""
-    budget_pred = db.query(BudgetPrediction).filter(BudgetPrediction.user_id == current_user.id).first()
-    if not budget_pred:
-        raise HTTPException(status_code=404, detail="Budget prediction not found")
-    return {"remaining_budget": budget_pred.remaining_budget}
+    """Expose the user's computed budget runway dynamically."""
+    summary = get_budget_summary(current_user=current_user, db=db)
+    return {"remaining_budget": summary["remaining_balance"]}
 
 @router.get("/expenses", response_model=List[ExpenseOut])
 def get_expenses(
