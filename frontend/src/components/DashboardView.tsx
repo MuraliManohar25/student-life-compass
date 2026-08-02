@@ -174,7 +174,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({ setActiveTab, onOp
           </div>
         </div>
 
-        <NearbyEssentialsCard />
+        <NearbyEssentialsCard setActiveTab={setActiveTab} />
       </div>
     </div>
   );

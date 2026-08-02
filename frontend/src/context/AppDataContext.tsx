@@ -109,6 +109,13 @@ export function AppDataProvider({ children }: { children: React.ReactNode }) {
     setScoreTrend(computeScoreTrend());
   }, []);
 
+  const refreshBudget = useCallback(() => {
+    const monthKey = getCurrentMonthKey();
+    setBudgetSummary(BudgetEngine.getCalculations(monthKey));
+    setIntelligenceScore(PerformanceEngine.getOverallScore());
+    setScoreTrend(computeScoreTrend());
+  }, []);
+
   const toggleTask = useCallback(
     (id: string) => {
       PerformanceEngine.toggleTask(id);
@@ -126,13 +133,6 @@ export function AppDataProvider({ children }: { children: React.ReactNode }) {
     },
     [refreshTasks]
   );
-
-  const refreshBudget = useCallback(() => {
-    const monthKey = getCurrentMonthKey();
-    setBudgetSummary(BudgetEngine.getCalculations(monthKey));
-    setIntelligenceScore(PerformanceEngine.getOverallScore());
-    setScoreTrend(computeScoreTrend());
-  }, []);
 
   const refreshRisk = useCallback(() => {
     setRiskScore(RiskAnalysisEngine.calculateRisks(getCurrentMonthKey()));

@@ -8,19 +8,33 @@ interface AskAiModalProps {
   activeTab: NavTab;
 }
 
+const AI_CHAT_KEY = "compass_ai_chat_history";
+
 export const AskAiModal: React.FC<AskAiModalProps> = ({
   isOpen,
   onClose,
   activeTab,
 }) => {
   const [query, setQuery] = useState("");
-  const [messages, setMessages] = useState<{ sender: "user" | "ai"; text: string }[]>([
-    {
-      sender: "ai",
-      text: "Hello Murali! I'm Compass AI, your personal academic advisor. How can I assist your study goals or career path today?",
-    },
-  ]);
+  const [messages, setMessages] = useState<{ sender: "user" | "ai"; text: string }[]>(() => {
+    try {
+      const saved = localStorage.getItem(AI_CHAT_KEY);
+      if (saved) return JSON.parse(saved);
+    } catch {}
+    return [
+      {
+        sender: "ai",
+        text: "Hello Murali! I'm Compass AI, your personal academic advisor. How can I assist your study goals or career path today?",
+      },
+    ];
+  });
   const [loading, setLoading] = useState(false);
+
+  React.useEffect(() => {
+    try {
+      localStorage.setItem(AI_CHAT_KEY, JSON.stringify(messages));
+    } catch {}
+  }, [messages]);
 
   if (!isOpen) return null;
 

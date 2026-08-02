@@ -1,25 +1,36 @@
-import React from "react";
+import React, { useEffect, useState } from "react";
+import { NavTab } from "../types";
+import { nearbyPlacesStore, NearbyPlacesStoreState } from "../services/nearbyPlacesStore";
+import { EvaluatedPlace } from "../services/localDiscoveryEngine";
 
-interface EssentialPlace {
-  id: string;
-  name: string;
-  category: string;
-  icon: string;
-  distance: string;
-  cost?: string;
+interface NearbyEssentialsCardProps {
+  setActiveTab?: (tab: NavTab) => void;
 }
 
-// Nearby Essentials Card: Provides students relocating to a new campus/city with quick access to local essentials.
-export const NearbyEssentialsCard: React.FC = () => {
-  // TODO: Replace mock places data with Google Maps Places API (e.g. /api/places/nearby)
-  const essentials: EssentialPlace[] = [
-    { id: "1", name: "Campus Central Library", category: "Quiet Study", icon: "menu_book", distance: "1.2 km" },
-    { id: "2", name: "Student Cafeteria", category: "Food & Drinks", icon: "local_cafe", distance: "300 m", cost: "₹120 avg" },
-    { id: "3", name: "Campus Grocery Mart", category: "Supplies", icon: "shopping_cart", distance: "500 m" },
-    { id: "4", name: "City Health Hospital", category: "Emergency 24/7", icon: "medical_services", distance: "2.0 km" },
-    { id: "5", name: "Central Bus Stop", category: "Transit", icon: "directions_bus", distance: "250 m" },
-    { id: "6", name: "FitZone Student Gym", category: "Fitness", icon: "fitness_center", distance: "1.5 km", cost: "₹700/mo" },
-  ];
+export const NearbyEssentialsCard: React.FC<NearbyEssentialsCardProps> = ({ setActiveTab }) => {
+  const [storeState, setStoreState] = useState<NearbyPlacesStoreState>(() => nearbyPlacesStore.getState());
+
+  useEffect(() => {
+    const unsubscribe = nearbyPlacesStore.subscribe(() => {
+      setStoreState(nearbyPlacesStore.getState());
+    });
+    return unsubscribe;
+  }, []);
+
+  const topPlaces = nearbyPlacesStore.getTopPlaces(4);
+
+  const handlePlaceClick = (place: EvaluatedPlace) => {
+    nearbyPlacesStore.setSelectedPlace(place.id);
+    if (setActiveTab) {
+      setActiveTab("nearby-places");
+    }
+  };
+
+  const handleViewAll = () => {
+    if (setActiveTab) {
+      setActiveTab("nearby-places");
+    }
+  };
 
   return (
     <div className="glass-card p-6 rounded-2xl border border-white/10 space-y-4">
@@ -29,40 +40,122 @@ export const NearbyEssentialsCard: React.FC = () => {
           <span className="material-symbols-outlined text-emerald-400">explore</span>
           <span>Nearby Essentials</span>
         </h3>
-        <span className="text-xs px-2.5 py-1 rounded-full bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 font-semibold">
-          City Guide
-        </span>
+        <button
+          onClick={handleViewAll}
+          className="text-xs px-3 py-1 rounded-full bg-[#4f46e5]/20 hover:bg-[#4f46e5]/40 border border-[#4f46e5]/40 text-[#c3c0ff] font-bold transition-all flex items-center gap-1"
+        >
+          <span>View All</span>
+          <span className="material-symbols-outlined text-xs">arrow_forward</span>
+        </button>
       </div>
 
-      {/* Essentials Grid */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5 max-h-56 overflow-y-auto pr-1">
-        {essentials.map((item) => (
-          <div
-            key={item.id}
-            className="p-3 rounded-xl bg-white/5 border border-white/10 hover:border-emerald-500/40 transition-all flex items-center justify-between gap-2"
+      {/* Location Error / Permission Denied State */}
+      {storeState.locationError ? (
+        <div className="p-4 rounded-xl bg-rose-500/10 border border-rose-500/30 space-y-3">
+          <div className="flex items-center gap-2 text-rose-300">
+            <span className="material-symbols-outlined text-base">location_off</span>
+            <span className="text-xs font-bold">Location access is required to show nearby essentials.</span>
+          </div>
+          <div className="flex items-center gap-2">
+            <button
+              onClick={() => nearbyPlacesStore.requestLocation(true)}
+              className="px-3 py-1.5 rounded-lg bg-rose-500 text-white font-bold text-xs hover:brightness-110 shadow-sm"
+            >
+              Retry Location
+            </button>
+            <button
+              onClick={() => nearbyPlacesStore.requestLocation(true)}
+              className="px-3 py-1.5 rounded-lg bg-white/10 hover:bg-white/15 text-white font-bold text-xs"
+            >
+              Refresh
+            </button>
+          </div>
+        </div>
+      ) : storeState.loadingPlaces || storeState.loadingLocation ? (
+        <div className="p-8 text-center text-xs text-[#c7c4d8] flex items-center justify-center gap-2">
+          <span className="material-symbols-outlined text-sm animate-spin text-cyan-400">autorenew</span>
+          <span>Loading nearby places...</span>
+        </div>
+      ) : topPlaces.length === 0 ? (
+        /* Empty State */
+        <div className="p-5 rounded-xl bg-white/5 border border-white/10 text-center space-y-2">
+          <p className="text-xs font-bold text-white">We couldn't find nearby places.</p>
+          <p className="text-[11px] text-[#c7c4d8] leading-relaxed">
+            Please check: <br />
+            ✓ Internet Connection <br />
+            ✓ GPS Permission
+          </p>
+          <button
+            onClick={() => nearbyPlacesStore.requestLocation(true)}
+            className="px-3 py-1.5 rounded-lg bg-[#4f46e5] text-white font-bold text-xs mt-1"
           >
-            <div className="flex items-center gap-2.5 min-w-0">
-              <div className="w-8 h-8 rounded-lg bg-emerald-500/10 text-emerald-400 flex items-center justify-center shrink-0">
-                <span className="material-symbols-outlined text-base">{item.icon}</span>
+            Refresh Location
+          </button>
+        </div>
+      ) : (
+        /* Essentials Grid */
+        <div className="space-y-3 max-h-72 overflow-y-auto pr-1">
+          {topPlaces.map((item) => (
+            <div
+              key={item.id}
+              onClick={() => handlePlaceClick(item)}
+              className="p-3.5 rounded-xl bg-white/5 border border-white/10 hover:border-[#4f46e5]/50 hover:bg-white/10 transition-all cursor-pointer space-y-2 group"
+            >
+              <div className="flex items-center justify-between gap-2">
+                <div className="flex items-center gap-2.5 min-w-0">
+                  <div className="w-8 h-8 rounded-lg bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 flex items-center justify-center shrink-0">
+                    <span className="material-symbols-outlined text-base">
+                      {item.category === "Cafe"
+                        ? "local_cafe"
+                        : item.category === "Library"
+                        ? "menu_book"
+                        : item.category === "Hospital" || item.category === "Medical Store"
+                        ? "medical_services"
+                        : item.category === "Gym"
+                        ? "fitness_center"
+                        : item.category === "Fast Food" || item.category === "Restaurant"
+                        ? "restaurant"
+                        : "explore"}
+                    </span>
+                  </div>
+                  <div className="min-w-0">
+                    <h4 className="font-bold text-xs text-white group-hover:text-[#c3c0ff] transition-colors truncate">
+                      {item.name}
+                    </h4>
+                    <p className="text-[10px] text-[#c7c4d8] truncate">
+                      {item.category} • {item.distanceMeters} m
+                    </p>
+                  </div>
+                </div>
+
+                <div className="flex flex-col items-end shrink-0 gap-1">
+                  <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full border ${item.statusColor}`}>
+                    {item.status} ({item.aiScorePercent}%)
+                  </span>
+                  <span className="text-[10px] font-semibold text-emerald-400">
+                    {item.estimatedCost === 0 ? "Free" : `₹${item.estimatedCost}`}
+                  </span>
+                </div>
               </div>
-              <div className="min-w-0">
-                <h4 className="font-semibold text-xs text-white truncate">{item.name}</h4>
-                <p className="text-[10px] text-[#c7c4d8] truncate">{item.category}</p>
-              </div>
-            </div>
-            <div className="flex flex-col items-end shrink-0 gap-1">
-              <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-white/10 text-white">
-                {item.distance}
-              </span>
-              {item.cost && (
-                <span className="text-[9px] font-semibold text-emerald-400">
-                  {item.cost}
-                </span>
+
+              {/* Short AI Explanation Points */}
+              {item.explanations && item.explanations.length > 0 && (
+                <div className="pt-1.5 border-t border-white/5 space-y-0.5">
+                  <p className="text-[10px] text-[#c3c0ff] font-semibold">Recommended because:</p>
+                  <ul className="text-[10px] text-white/80 space-y-0.5 pl-1">
+                    {item.explanations.slice(0, 2).map((exp, idx) => (
+                      <li key={idx} className="flex items-center gap-1.5">
+                        <span className="text-emerald-400 font-bold">✓</span>
+                        <span className="truncate">{exp}</span>
+                      </li>
+                    ))}
+                  </ul>
+                </div>
               )}
             </div>
-          </div>
-        ))}
-      </div>
+          ))}
+        </div>
+      )}
     </div>
   );
 };

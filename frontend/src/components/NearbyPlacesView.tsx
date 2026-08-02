@@ -17,6 +17,8 @@ import { getCurrentMonthKey } from "../services/budgetEngine";
 import { useAppData } from "../context/AppDataContext";
 import { VisitedExpenseModal } from "./Discovery/VisitedExpenseModal";
 
+import { nearbyPlacesStore, NearbyPlacesStoreState } from "../services/nearbyPlacesStore";
+
 const DEFAULT_LOCATION: Coordinates = [18.0560, 83.4024]; // Default College Campus coordinates
 
 // Custom Leaflet pins
@@ -55,24 +57,31 @@ function MapViewport({ center }: { center: Coordinates }) {
 }
 
 export const NearbyPlacesView: React.FC = () => {
-  const { budgetSummary, refreshBudget, refreshNearbyPlaces, recordNearbySearch } = useAppData();
+  const { budgetSummary, refreshBudget, refreshNearbyPlaces } = useAppData();
   const monthKey = getCurrentMonthKey();
   const budgetCalcs = budgetSummary;
 
   const [activeMainTab, setActiveMainTab] = useState<"Discovery" | "Favorites" | "Visited">("Discovery");
 
-  // Geolocation states
-  const [userLocation, setUserLocation] = useState<Coordinates | null>(null);
-  const [mapCenter, setMapCenter] = useState<Coordinates>(DEFAULT_LOCATION);
-  const [locationAddress, setLocationAddress] = useState<string>("Requesting GPS Location...");
-  const [locationAccuracy, setLocationAccuracy] = useState<number | null>(null);
-  const [lastUpdatedTime, setLastUpdatedTime] = useState<string>("");
-  const [locationError, setLocationError] = useState<boolean>(false);
-  const [loadingLocation, setLoadingLocation] = useState<boolean>(true);
+  // Single Source of Truth Store Subscription
+  const [storeState, setStoreState] = useState<NearbyPlacesStoreState>(() => nearbyPlacesStore.getState());
 
-  // Raw & Evaluated Places
-  const [rawPlaces, setRawPlaces] = useState<RealPlace[]>([]);
-  const [loadingPlaces, setLoadingPlaces] = useState<boolean>(false);
+  useEffect(() => {
+    const unsubscribe = nearbyPlacesStore.subscribe(() => {
+      setStoreState(nearbyPlacesStore.getState());
+    });
+    return unsubscribe;
+  }, []);
+
+  const userLocation = storeState.userLocation;
+  const mapCenter = storeState.mapCenter;
+  const locationAddress = storeState.locationAddress;
+  const locationAccuracy = storeState.locationAccuracy;
+  const lastUpdatedTime = storeState.lastUpdatedTime;
+  const locationError = storeState.locationError;
+  const loadingLocation = storeState.loadingLocation;
+  const loadingPlaces = storeState.loadingPlaces;
+  const evaluatedPlaces = storeState.evaluatedPlaces;
 
   // Filters & Search
   const [searchQuery, setSearchQuery] = useState<string>("");
@@ -86,6 +95,19 @@ export const NearbyPlacesView: React.FC = () => {
   const [selectedPlace, setSelectedPlace] = useState<EvaluatedPlace | null>(null);
   const [routeLine, setRouteLine] = useState<Coordinates[]>([]);
 
+  // Automatically select & highlight place if selected from NearbyEssentialsCard or Search
+  useEffect(() => {
+    if (storeState.selectedPlaceId && evaluatedPlaces.length > 0) {
+      const match = evaluatedPlaces.find((p) => p.id === storeState.selectedPlaceId);
+      if (match) {
+        setSelectedPlace(match);
+        if (userLocation) {
+          setRouteLine([userLocation, match.coordinates]);
+        }
+      }
+    }
+  }, [storeState.selectedPlaceId, evaluatedPlaces, userLocation]);
+
   // Favorites & Visited History
   const [favoritesList, setFavoritesList] = useState<string[]>(() => LocalDiscoveryEngine.getFavorites());
   const [visitedHistory, setVisitedHistory] = useState<VisitedRecord[]>(() => LocalDiscoveryEngine.getVisitedHistory());
@@ -94,70 +116,9 @@ export const NearbyPlacesView: React.FC = () => {
   const [visitedModalOpen, setVisitedModalOpen] = useState<boolean>(false);
   const [visitedPlaceTarget, setVisitedPlaceTarget] = useState<EvaluatedPlace | null>(null);
 
-  // Request Browser Geolocation
   const requestLocation = () => {
-    setLoadingLocation(true);
-    setLocationError(false);
-
-    if (!navigator.geolocation) {
-      setLocationError(true);
-      setLoadingLocation(false);
-      setLocationAddress("Geolocation is not supported by your browser.");
-      return;
-    }
-
-    navigator.geolocation.getCurrentPosition(
-      async ({ coords }) => {
-        const loc: Coordinates = [coords.latitude, coords.longitude];
-        setUserLocation(loc);
-        setMapCenter(loc);
-        setLocationAccuracy(Math.round(coords.accuracy || 15));
-        setLastUpdatedTime(new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }));
-        setLoadingLocation(false);
-
-        // Reverse Geocode Address
-        const addr = await reverseGeocodeAddress(coords.latitude, coords.longitude);
-        setLocationAddress(addr);
-
-        // Fetch real OSM places
-        loadPlacesForLocation(loc, addr);
-      },
-      (err) => {
-        console.warn("Geolocation permission error:", err);
-        setLocationError(true);
-        setLoadingLocation(false);
-        // Fallback to default college campus coordinates
-        setUserLocation(DEFAULT_LOCATION);
-        setMapCenter(DEFAULT_LOCATION);
-        setLocationAddress("College Campus, Vizianagaram (Fallback)");
-        loadPlacesForLocation(DEFAULT_LOCATION, "College Campus, Vizianagaram (Fallback)");
-      },
-      { enableHighAccuracy: true, timeout: 12000, maximumAge: 60000 }
-    );
+    nearbyPlacesStore.requestLocation(true);
   };
-
-  const loadPlacesForLocation = async (loc: Coordinates, addressLabel?: string) => {
-    setLoadingPlaces(true);
-    try {
-      const fetched = await fetchRealNearbyPlaces(loc);
-      setRawPlaces(fetched);
-      recordNearbySearch(addressLabel || locationAddress || "Unknown location", fetched.length);
-    } catch {
-      /* fallbackhandled */
-    } finally {
-      setLoadingPlaces(false);
-    }
-  };
-
-  useEffect(() => {
-    requestLocation();
-  }, []);
-
-  // Evaluated Places with dynamic AI scores
-  const evaluatedPlaces = useMemo(() => {
-    if (!budgetCalcs) return [];
-    return LocalDiscoveryEngine.evaluatePlaces(rawPlaces, monthKey);
-  }, [rawPlaces, budgetCalcs, monthKey]);
 
   // AI Student Insights Highlights
   const highlights = useMemo(() => {

@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useRef } from "react";
 import { NavTab } from "../types";
 import { notificationsApi, authApi } from "../services/api";
+import { GlobalSearchEngine, GroupedSearchResult, SearchResultItem } from "../services/globalSearchEngine";
 
 interface NotifItem {
   id: number;
@@ -23,6 +24,9 @@ export const Navigation: React.FC<NavigationProps> = ({
 }) => {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
+  const [searchResults, setSearchResults] = useState<GroupedSearchResult[]>([]);
+  const [searchFocused, setSearchFocused] = useState(false);
+  const searchRef = useRef<HTMLDivElement>(null);
 
   // Bug #7 — notification bell state
   const [notifOpen, setNotifOpen] = useState(false);
@@ -38,16 +42,42 @@ export const Navigation: React.FC<NavigationProps> = ({
     { id: 3, title: "Placement Opportunity", message: "Stripe software intern application deadline approaching.", category: "Placement", is_read: false },
   ];
 
-  // Close dropdown when clicking outside
+  // Debounced search engine execution (275ms)
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      if (searchQuery.trim()) {
+        const res = GlobalSearchEngine.search(searchQuery, activeTab);
+        setSearchResults(res);
+      } else {
+        setSearchResults([]);
+      }
+    }, 275);
+    return () => clearTimeout(timer);
+  }, [searchQuery, activeTab]);
+
+  // Close dropdowns when clicking outside
   useEffect(() => {
     const handler = (e: MouseEvent) => {
       if (notifRef.current && !notifRef.current.contains(e.target as Node)) {
         setNotifOpen(false);
       }
+      if (searchRef.current && !searchRef.current.contains(e.target as Node)) {
+        setSearchFocused(false);
+      }
     };
     document.addEventListener("mousedown", handler);
     return () => document.removeEventListener("mousedown", handler);
   }, []);
+
+  const handleSelectSearchResult = (item: SearchResultItem) => {
+    setSearchQuery("");
+    setSearchFocused(false);
+    if (item.moduleName === "AI Assistant") {
+      onOpenAskAi();
+    } else {
+      setActiveTab(item.moduleTab);
+    }
+  };
 
   const handleBellClick = async () => {
     const opening = !notifOpen;
@@ -59,11 +89,9 @@ export const Navigation: React.FC<NavigationProps> = ({
         if (Array.isArray(data) && data.length > 0) {
           setNotifications(data);
         } else {
-          // Backend returned empty — use demo notifications
           setNotifications(DEMO_NOTIFICATIONS);
         }
       } catch {
-        // Not logged in or backend offline — show demo notifications
         setNotifications(DEMO_NOTIFICATIONS);
       } finally {
         setNotifLoading(false);
@@ -77,7 +105,7 @@ export const Navigation: React.FC<NavigationProps> = ({
     );
     try {
       await notificationsApi.markRead(id);
-    } catch { /* offline — state already updated optimistically */ }
+    } catch { /* offline state */ }
   };
 
   const handleMarkAllRead = () => {
@@ -113,17 +141,75 @@ export const Navigation: React.FC<NavigationProps> = ({
             >
               <span className="material-symbols-outlined">menu</span>
             </button>
-            <div className="relative hidden sm:block">
+
+            {/* Global Real-Time Search Bar */}
+            <div className="relative hidden sm:block" ref={searchRef}>
               <span className="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-[#c7c4d8] text-sm">
                 search
               </span>
               <input
                 type="text"
                 value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-                placeholder="Search insights, courses, skills..."
-                className="bg-white/5 border border-white/10 rounded-full pl-10 pr-4 py-1.5 text-xs text-[#e5e2e3] w-60 md:w-72 focus:outline-none focus:border-[#4f46e5]/50 focus:bg-white/10 transition-all"
+                onFocus={() => setSearchFocused(true)}
+                onChange={(e) => {
+                  setSearchQuery(e.target.value);
+                  setSearchFocused(true);
+                }}
+                placeholder="Search DBMS, Budget, Library, Hackathon..."
+                className="bg-white/5 border border-white/10 rounded-full pl-10 pr-4 py-1.5 text-xs text-[#e5e2e3] w-64 md:w-80 focus:outline-none focus:border-[#4f46e5]/80 focus:bg-white/10 transition-all"
               />
+
+              {/* Grouped Search Results Popover */}
+              {searchFocused && searchQuery.trim().length > 0 && (
+                <div className="absolute left-0 top-11 w-96 max-h-96 overflow-y-auto bg-[#1a1a22] border border-white/15 rounded-2xl shadow-2xl shadow-black/80 z-50 p-2 space-y-3">
+                  {searchResults.length === 0 ? (
+                    <div className="p-6 text-center text-xs text-[#c7c4d8]">
+                      <span className="material-symbols-outlined text-[#c7c4d8] text-2xl mb-1 block">search_off</span>
+                      No matching results found.
+                    </div>
+                  ) : (
+                    searchResults.map((group) => (
+                      <div key={group.moduleName} className="space-y-1">
+                        <div className="px-3 py-1 flex items-center justify-between border-b border-white/10">
+                          <span className="text-[10px] font-bold text-[#c3c0ff] uppercase tracking-wider">
+                            {group.moduleName}
+                          </span>
+                          <span className="text-[9px] text-[#c7c4d8]">
+                            {group.items.length} result(s)
+                          </span>
+                        </div>
+
+                        <div className="space-y-1 pt-1">
+                          {group.items.map((item) => (
+                            <div
+                              key={item.id}
+                              onClick={() => handleSelectSearchResult(item)}
+                              className="p-2.5 rounded-xl hover:bg-white/10 transition-colors cursor-pointer flex items-center justify-between gap-3 group/item border border-transparent hover:border-white/10"
+                            >
+                              <div className="flex items-center gap-2.5 min-w-0">
+                                <div className="w-7 h-7 rounded-lg bg-[#4f46e5]/20 text-[#c3c0ff] flex items-center justify-center shrink-0 border border-[#4f46e5]/30">
+                                  <span className="material-symbols-outlined text-sm">{item.icon}</span>
+                                </div>
+                                <div className="min-w-0">
+                                  <h4 className="text-xs font-bold text-white group-hover/item:text-[#c3c0ff] transition-colors truncate">
+                                    {item.title}
+                                  </h4>
+                                  <p className="text-[10px] text-[#c7c4d8] truncate">{item.description}</p>
+                                </div>
+                              </div>
+
+                              <button className="px-2 py-1 rounded-lg bg-white/5 border border-white/10 text-[10px] text-[#c3c0ff] font-bold shrink-0 hover:bg-[#4f46e5] hover:text-white transition-all flex items-center gap-1">
+                                <span>Open</span>
+                                <span className="material-symbols-outlined text-[10px]">arrow_forward</span>
+                              </button>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    ))
+                  )}
+                </div>
+              )}
             </div>
           </div>
 
