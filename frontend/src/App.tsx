@@ -14,6 +14,7 @@ import { SettingsView } from "./components/SettingsView";
 import { AuthView } from "./components/AuthView";
 import { OnboardingView } from "./components/OnboardingView";
 import { profileApi } from "./services/api";
+import { AppDataProvider } from "./context/AppDataContext";
 
 export function App() {
   const [activeTab, setActiveTab] = useState<NavTab>("landing");
@@ -99,6 +100,7 @@ export function App() {
   };
 
   return (
+    <AppDataProvider>
     <div className="min-h-screen bg-[#131314] text-[#e5e2e3] font-['Inter',sans-serif] antialiased selection:bg-[#4f46e5]/30 selection:text-[#c3c0ff]">
       {/* Navigation Header & Sidebar (hidden on landing, auth, and onboarding) */}
       {activeTab !== "landing" && activeTab !== "auth" && activeTab !== "onboarding" && (
@@ -157,6 +159,7 @@ export function App() {
         activeTab={activeTab}
       />
     </div>
+    </AppDataProvider>
   );
 }
 

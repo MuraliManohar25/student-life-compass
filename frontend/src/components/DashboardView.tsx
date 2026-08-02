@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from "react";
 import { NavTab, MissionTask, TimelineEvent } from "../types";
 import { dashboardApi } from "../services/api";
+import { useAppData } from "../context/AppDataContext";
 import { DashboardHeader } from "./DashboardHeader";
 import { TodayMissionCard } from "./TodayMissionCard";
 import { FocusActivityCard } from "./FocusActivityCard";
@@ -29,6 +30,8 @@ const DEFAULT_EVENTS: TimelineEvent[] = [
 ];
 
 export const DashboardView: React.FC<DashboardViewProps> = ({ setActiveTab, onOpenAskAi }) => {
+  const { budgetSummary, intelligenceScore, scoreTrend, profile, isLoading } = useAppData();
+
   const [tasks, setTasks] = useState<MissionTask[]>(() => {
     try { const saved = localStorage.getItem(LS_TASKS_KEY); return saved ? JSON.parse(saved) : DEFAULT_TASKS; }
     catch { return DEFAULT_TASKS; }
@@ -37,24 +40,20 @@ export const DashboardView: React.FC<DashboardViewProps> = ({ setActiveTab, onOp
     try { const saved = localStorage.getItem(LS_EVENTS_KEY); return saved ? JSON.parse(saved) : DEFAULT_EVENTS; }
     catch { return DEFAULT_EVENTS; }
   });
-  const [userName, setUserName] = useState("Murali");
-  const [intelligenceScore, setIntelligenceScore] = useState(84);
-  const [scoreTrend, setScoreTrend] = useState("+6%");
-  const [budgetRemaining, setBudgetRemaining] = useState(1640);
+
+  const userName = profile?.displayName || "Student";
+  const budgetRemaining = budgetSummary?.remainingBudget;
+  const budgetUtilization = budgetSummary?.budgetUtilization ?? 0;
 
   useEffect(() => {
-    async function loadDashboardData() {
+    async function loadDashboardExtras() {
       try {
         const data = await dashboardApi.getDashboard();
-        if (data.user_name) setUserName(data.user_name);
-        if (data.intelligence_score) setIntelligenceScore(data.intelligence_score);
-        if (data.score_trend) setScoreTrend(data.score_trend);
-        if (data.remaining_budget) setBudgetRemaining(data.remaining_budget);
         if (data.tasks?.length && !localStorage.getItem(LS_TASKS_KEY)) setTasks(data.tasks);
         if (data.timeline_events?.length && !localStorage.getItem(LS_EVENTS_KEY)) setTimelineEvents(data.timeline_events);
-      } catch (err) { console.warn("Using fallback state for Dashboard:", err); }
+      } catch (err) { console.warn("Using fallback state for Dashboard tasks/events:", err); }
     }
-    loadDashboardData();
+    loadDashboardExtras();
   }, []);
 
   useEffect(() => { localStorage.setItem(LS_TASKS_KEY, JSON.stringify(tasks)); }, [tasks]);
@@ -72,20 +71,32 @@ export const DashboardView: React.FC<DashboardViewProps> = ({ setActiveTab, onOp
           <div className="flex justify-between items-start">
             <div>
               <span className="text-[10px] font-bold uppercase tracking-widest text-[#c3c0ff]">PERFORMANCE SCORE</span>
-              <h2 className="font-headline font-black text-4xl text-white mt-1">{intelligenceScore}%</h2>
+              {isLoading || intelligenceScore === null ? (
+                <div className="h-10 w-24 bg-white/10 rounded-lg animate-pulse mt-1" />
+              ) : (
+                <h2 className="font-headline font-black text-4xl text-white mt-1">{intelligenceScore}%</h2>
+              )}
             </div>
-            <div className="px-2.5 py-1 rounded-full bg-emerald-500/20 text-emerald-400 text-xs font-bold border border-emerald-500/30 flex items-center gap-1">
-              <span className="material-symbols-outlined text-xs">trending_up</span>
-              <span>{scoreTrend}</span>
-            </div>
+            {!isLoading && scoreTrend && (
+              <div className="px-2.5 py-1 rounded-full bg-emerald-500/20 text-emerald-400 text-xs font-bold border border-emerald-500/30 flex items-center gap-1">
+                <span className="material-symbols-outlined text-xs">trending_up</span>
+                <span>{scoreTrend}</span>
+              </div>
+            )}
           </div>
           <div className="my-4 space-y-2">
             <div className="flex justify-between text-xs text-[#c7c4d8]">
               <span>Efficiency Index</span>
-              <span className="font-semibold text-white">Optimal ({intelligenceScore}/100)</span>
+              {isLoading || intelligenceScore === null ? (
+                <span className="font-semibold text-[#c7c4d8]">Loading…</span>
+              ) : (
+                <span className="font-semibold text-white">Optimal ({intelligenceScore}/100)</span>
+              )}
             </div>
             <div className="w-full h-2 bg-white/10 rounded-full overflow-hidden">
-              <div style={{ width: `${intelligenceScore}%` }} className="h-full bg-gradient-to-r from-[#4f46e5] to-[#c3c0ff] rounded-full"></div>
+              {intelligenceScore !== null && (
+                <div style={{ width: `${intelligenceScore}%` }} className="h-full bg-gradient-to-r from-[#4f46e5] to-[#c3c0ff] rounded-full"></div>
+              )}
             </div>
           </div>
           <div className="flex items-center justify-between text-xs text-[#c3c0ff] pt-2 border-t border-white/5">
@@ -105,11 +116,18 @@ export const DashboardView: React.FC<DashboardViewProps> = ({ setActiveTab, onOp
             <span className="text-xs px-2.5 py-1 rounded-full bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 font-bold">Healthy</span>
           </div>
           <div className="space-y-1">
-            <p className="text-2xl font-headline font-black text-white">₹{budgetRemaining.toLocaleString()}</p>
+            {isLoading || budgetRemaining === undefined ? (
+              <div className="h-8 w-32 bg-white/10 rounded-lg animate-pulse" />
+            ) : (
+              <p className="text-2xl font-headline font-black text-white">₹{budgetRemaining.toLocaleString()}</p>
+            )}
             <p className="text-xs text-[#c7c4d8]">Remaining for Month</p>
           </div>
           <div className="w-full h-2 bg-white/10 rounded-full overflow-hidden">
-            <div className="h-full bg-emerald-400 rounded-full w-[62%]"></div>
+            <div
+              style={{ width: `${Math.max(0, 100 - budgetUtilization)}%` }}
+              className="h-full bg-emerald-400 rounded-full transition-all duration-500"
+            />
           </div>
           <button className="w-full py-2 bg-white/5 hover:bg-white/10 border border-white/10 rounded-xl text-xs font-semibold text-[#c3c0ff]">Manage Expenses</button>
         </div>

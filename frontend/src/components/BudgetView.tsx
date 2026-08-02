@@ -9,10 +9,12 @@ import {
   parseMonthKey,
   BudgetExpense,
 } from "../services/budgetEngine";
+import { useAppData } from "../context/AppDataContext";
 import { EditBudgetModal } from "./Budget/EditBudgetModal";
 import { ExpenseModal } from "./Budget/ExpenseModal";
 
 export const BudgetView: React.FC = () => {
+  const { refreshBudget } = useAppData();
   const [selectedMonthKey, setSelectedMonthKey] = useState<string>(getCurrentMonthKey());
   const availableMonthOptions = getAvailableMonths();
 
@@ -58,6 +60,7 @@ export const BudgetView: React.FC = () => {
   const handleSaveBudgetConfig = (budget: number, income: number, goal: number, currency: string) => {
     BudgetEngine.updateMonthConfig(selectedMonthKey, budget, income, goal, currency);
     refreshData(selectedMonthKey);
+    if (selectedMonthKey === getCurrentMonthKey()) refreshBudget();
   };
 
   const handleSaveExpense = (data: any) => {
@@ -67,12 +70,14 @@ export const BudgetView: React.FC = () => {
       BudgetEngine.addExpense(selectedMonthKey, data);
     }
     refreshData(selectedMonthKey);
+    if (selectedMonthKey === getCurrentMonthKey()) refreshBudget();
   };
 
   const handleDeleteExpense = (id: string, e: React.MouseEvent) => {
     e.stopPropagation();
     BudgetEngine.deleteExpense(selectedMonthKey, id);
     refreshData(selectedMonthKey);
+    if (selectedMonthKey === getCurrentMonthKey()) refreshBudget();
   };
 
   const handleEditExpenseOpen = (exp: BudgetExpense, e: React.MouseEvent) => {

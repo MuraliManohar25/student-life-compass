@@ -13,7 +13,8 @@ import {
   EvaluatedPlace,
   VisitedRecord,
 } from "../services/localDiscoveryEngine";
-import { BudgetEngine } from "../services/budgetEngine";
+import { getCurrentMonthKey } from "../services/budgetEngine";
+import { useAppData } from "../context/AppDataContext";
 import { VisitedExpenseModal } from "./Discovery/VisitedExpenseModal";
 
 const DEFAULT_LOCATION: Coordinates = [18.0560, 83.4024]; // Default College Campus coordinates
@@ -54,6 +55,10 @@ function MapViewport({ center }: { center: Coordinates }) {
 }
 
 export const NearbyPlacesView: React.FC = () => {
+  const { budgetSummary, refreshBudget, refreshNearbyPlaces, recordNearbySearch } = useAppData();
+  const monthKey = getCurrentMonthKey();
+  const budgetCalcs = budgetSummary;
+
   const [activeMainTab, setActiveMainTab] = useState<"Discovery" | "Favorites" | "Visited">("Discovery");
 
   // Geolocation states
@@ -68,9 +73,6 @@ export const NearbyPlacesView: React.FC = () => {
   // Raw & Evaluated Places
   const [rawPlaces, setRawPlaces] = useState<RealPlace[]>([]);
   const [loadingPlaces, setLoadingPlaces] = useState<boolean>(false);
-
-  // Budget Module values
-  const [budgetCalcs, setBudgetCalcs] = useState(() => BudgetEngine.getCalculations("2026-08"));
 
   // Filters & Search
   const [searchQuery, setSearchQuery] = useState<string>("");
@@ -118,7 +120,7 @@ export const NearbyPlacesView: React.FC = () => {
         setLocationAddress(addr);
 
         // Fetch real OSM places
-        loadPlacesForLocation(loc);
+        loadPlacesForLocation(loc, addr);
       },
       (err) => {
         console.warn("Geolocation permission error:", err);
@@ -128,17 +130,18 @@ export const NearbyPlacesView: React.FC = () => {
         setUserLocation(DEFAULT_LOCATION);
         setMapCenter(DEFAULT_LOCATION);
         setLocationAddress("College Campus, Vizianagaram (Fallback)");
-        loadPlacesForLocation(DEFAULT_LOCATION);
+        loadPlacesForLocation(DEFAULT_LOCATION, "College Campus, Vizianagaram (Fallback)");
       },
       { enableHighAccuracy: true, timeout: 12000, maximumAge: 60000 }
     );
   };
 
-  const loadPlacesForLocation = async (loc: Coordinates) => {
+  const loadPlacesForLocation = async (loc: Coordinates, addressLabel?: string) => {
     setLoadingPlaces(true);
     try {
       const fetched = await fetchRealNearbyPlaces(loc);
       setRawPlaces(fetched);
+      recordNearbySearch(addressLabel || locationAddress || "Unknown location", fetched.length);
     } catch {
       /* fallbackhandled */
     } finally {
@@ -148,13 +151,13 @@ export const NearbyPlacesView: React.FC = () => {
 
   useEffect(() => {
     requestLocation();
-    setBudgetCalcs(BudgetEngine.getCalculations("2026-08"));
   }, []);
 
   // Evaluated Places with dynamic AI scores
   const evaluatedPlaces = useMemo(() => {
-    return LocalDiscoveryEngine.evaluatePlaces(rawPlaces, "2026-08");
-  }, [rawPlaces, budgetCalcs]);
+    if (!budgetCalcs) return [];
+    return LocalDiscoveryEngine.evaluatePlaces(rawPlaces, monthKey);
+  }, [rawPlaces, budgetCalcs, monthKey]);
 
   // AI Student Insights Highlights
   const highlights = useMemo(() => {
@@ -169,7 +172,7 @@ export const NearbyPlacesView: React.FC = () => {
     // Natural Smart Search Handling
     if (q) {
       if (q.includes("cheap") || q.includes("affordable")) {
-        result = result.filter((p) => p.status === "Highly Recommended" || p.status === "Affordable" || p.estimatedCost <= budgetCalcs.safeDailyLimit);
+        result = result.filter((p) => p.status === "Highly Recommended" || p.status === "Affordable" || (budgetCalcs && p.estimatedCost <= budgetCalcs.safeDailyLimit));
       } else if (q.includes("study") || q.includes("library") || q.includes("wifi")) {
         result = result.filter((p) => p.category === "Library" || p.hasWifi || p.isStudentFriendly);
       } else if (q.includes("lunch") || q.includes("food") || q.includes("cafe")) {
@@ -195,7 +198,7 @@ export const NearbyPlacesView: React.FC = () => {
     result = result.filter((p) => p.distanceMeters <= maxDistance);
     result = result.filter((p) => p.estimatedCost <= maxBudgetCost);
 
-    if (affordableOnly) {
+    if (affordableOnly && budgetCalcs) {
       result = result.filter((p) => p.estimatedCost <= budgetCalcs.safeDailyLimit);
     }
 
@@ -212,7 +215,7 @@ export const NearbyPlacesView: React.FC = () => {
     maxBudgetCost,
     affordableOnly,
     studentFriendlyOnly,
-    budgetCalcs.safeDailyLimit,
+    budgetCalcs?.safeDailyLimit,
   ]);
 
   // Handle Place Selection & Route Line
@@ -240,10 +243,10 @@ export const NearbyPlacesView: React.FC = () => {
   // Confirm Visited Expense & Sync with Budget Engine
   const handleConfirmVisitedSpend = (amountSpent: number) => {
     if (!visitedPlaceTarget) return;
-    const updatedHistory = LocalDiscoveryEngine.recordVisit(visitedPlaceTarget, amountSpent, "2026-08");
+    const updatedHistory = LocalDiscoveryEngine.recordVisit(visitedPlaceTarget, amountSpent, monthKey);
     setVisitedHistory(updatedHistory);
-    // Refresh Budget Calcs live
-    setBudgetCalcs(BudgetEngine.getCalculations("2026-08"));
+    refreshBudget();
+    refreshNearbyPlaces();
   };
 
   // One-Click Navigation
@@ -253,7 +256,18 @@ export const NearbyPlacesView: React.FC = () => {
     window.open(url, "_blank");
   };
 
-  const currency = budgetCalcs.currency || "₹";
+  const currency = budgetCalcs?.currency || "₹";
+
+  if (!budgetCalcs) {
+    return (
+      <div className="min-h-screen pt-20 pb-20 px-4 md:px-8 max-w-7xl mx-auto flex items-center justify-center">
+        <div className="text-sm text-[#c7c4d8] flex items-center gap-2">
+          <span className="material-symbols-outlined text-sm animate-spin text-cyan-400">autorenew</span>
+          <span>Loading shared budget data…</span>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen pt-20 pb-20 px-4 md:px-8 max-w-7xl mx-auto space-y-8">

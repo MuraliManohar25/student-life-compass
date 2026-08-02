@@ -1,22 +1,16 @@
-import React, { useState, useEffect } from "react";
+import React, { useState } from "react";
 import {
   RiskAnalysisEngine,
-  OverallRiskSummary,
   RiskCategoryAssessment,
 } from "../services/riskAnalysisEngine";
+import { useAppData } from "../context/AppDataContext";
 
 export const RiskPredictionView: React.FC = () => {
-  const [summary, setSummary] = useState<OverallRiskSummary>(() =>
-    RiskAnalysisEngine.calculateRisks()
-  );
+  const { riskScore, refreshRisk } = useAppData();
+  const summary = riskScore ?? RiskAnalysisEngine.calculateRisks();
 
   // Expandable "Why did AI assign this risk?" state per category
   const [expandedAudit, setExpandedAudit] = useState<Record<string, boolean>>({});
-
-  useEffect(() => {
-    // Automatically calculate risks from live multi-module data on mount
-    setSummary(RiskAnalysisEngine.calculateRisks());
-  }, []);
 
   const toggleAudit = (categoryKey: string) => {
     setExpandedAudit((prev) => ({ ...prev, [categoryKey]: !prev[categoryKey] }));
@@ -235,7 +229,7 @@ export const RiskPredictionView: React.FC = () => {
 
           {/* Refresh Action */}
           <button
-            onClick={() => setSummary(RiskAnalysisEngine.calculateRisks())}
+            onClick={refreshRisk}
             className="px-4 py-2.5 rounded-2xl bg-white/10 hover:bg-white/15 border border-white/20 text-white font-bold text-xs flex items-center gap-1.5 transition-all shrink-0 self-start md:self-auto"
           >
             <span className="material-symbols-outlined text-sm">refresh</span>
