@@ -101,7 +101,7 @@ class GeminiService:
             try:
                 import google.generativeai as genai
                 genai.configure(api_key=self.api_key)
-                model = genai.GenerativeModel('gemini-2.0-flash-exp')
+                model = genai.GenerativeModel('gemini-3.5-flash')
                 ctx_str = f"Student Target Role: {target_role}. Profile Context: {profile_data if profile_data else 'Standard'}"
                 response = model.generate_content(
                     f"You are an elite AI Career Mentor for a university student. {ctx_str}\nKeep responses concise and use short bullet points where appropriate.\nPrompt: {prompt}"
@@ -125,7 +125,7 @@ class GeminiService:
             try:
                 import google.generativeai as genai
                 genai.configure(api_key=self.api_key)
-                model = genai.GenerativeModel('gemini-2.0-flash-exp')
+                model = genai.GenerativeModel('gemini-3.5-flash')
                 sys_inst = "You are Compass AI, a high-performance university student advisor. Provide concise, actionable, encouraging advice on study planning, career development, interview prep, skill building, and budget optimization."
                 res = model.generate_content(f"{sys_inst}\n\nStudent Query: {prompt}\nContext: {context}")
                 if res and res.text:
