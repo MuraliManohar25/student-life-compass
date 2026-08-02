@@ -52,14 +52,13 @@ class Settings(BaseSettings):
 
     DATABASE_URL: str = os.getenv("DATABASE_URL", "sqlite:///./student_compass.db")
     GEMINI_API_KEY: str = os.getenv("GEMINI_API_KEY", "")
-    CORS_ORIGINS: List[str] = []
 
-    model_config = SettingsConfigDict(env_file=".env", env_file_encoding="utf-8", extra="ignore", frozen=False)
+    model_config = SettingsConfigDict(env_file=".env", env_file_encoding="utf-8", extra="ignore")
 
 
 settings = Settings()
 
-# Parse CORS_ORIGINS from environment variable
+# Add CORS_ORIGINS as a standalone attribute (not a pydantic field)
 def _parse_cors_origins() -> List[str]:
     cors_env = os.getenv("CORS_ORIGINS", "")
     if not cors_env or not cors_env.strip():
@@ -77,4 +76,5 @@ def _parse_cors_origins() -> List[str]:
 
     return [item.strip() for item in stripped.split(",") if item.strip()]
 
-settings.CORS_ORIGINS = _parse_cors_origins()
+# Set CORS_ORIGINS as a dynamic attribute to avoid pydantic_settings parsing
+setattr(settings, 'CORS_ORIGINS', _parse_cors_origins())
