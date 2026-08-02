@@ -1,4 +1,5 @@
 import os
+import subprocess
 from fastapi import Depends, FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import RedirectResponse
@@ -105,3 +106,15 @@ def health_check():
         "project": settings.PROJECT_NAME,
         "version": settings.VERSION
     }
+
+def get_git_commit():
+    try:
+        return subprocess.check_output(
+            ["git", "rev-parse", "--short", "HEAD"]
+        ).decode().strip()
+    except Exception:
+        return "unknown"
+
+@app.get("/api/version")
+def version():
+    return {"commit": get_git_commit(), "deployed_at": settings.VERSION}

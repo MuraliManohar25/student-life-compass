@@ -17,7 +17,7 @@ export const AskAiModal: React.FC<AskAiModalProps> = ({
   activeTab,
 }) => {
   const [query, setQuery] = useState("");
-  const [messages, setMessages] = useState<{ sender: "user" | "ai"; text: string }[]>(() => {
+  const [messages, setMessages] = useState<{ sender: "user" | "ai"; text: string; source?: string }[]>(() => {
     try {
       const saved = localStorage.getItem(AI_CHAT_KEY);
       if (saved) return JSON.parse(saved);
@@ -26,6 +26,7 @@ export const AskAiModal: React.FC<AskAiModalProps> = ({
       {
         sender: "ai",
         text: "Hello! I'm Compass AI, your personal academic advisor. How can I assist your study goals or career path today?",
+        source: "gemini-ai",
       },
     ];
   });
@@ -67,7 +68,7 @@ export const AskAiModal: React.FC<AskAiModalProps> = ({
       const data = await aiApi.ask(userText, profileContext);
       setMessages((prev) => [
         ...prev,
-        { sender: "ai", text: data.reply || "I am processing your query based on your student index." },
+        { sender: "ai", text: data.reply || "I am processing your query based on your student index.", source: data.source },
       ]);
     } catch (err) {
       console.error(err);
@@ -125,8 +126,16 @@ export const AskAiModal: React.FC<AskAiModalProps> = ({
               {msg.sender === "user" ? (
                 msg.text
               ) : (
-                <div className="prose prose-invert prose-sm max-w-none">
-                  <ReactMarkdown>{msg.text}</ReactMarkdown>
+                <div>
+                  <div className="prose prose-invert prose-sm max-w-none">
+                    <ReactMarkdown>{msg.text}</ReactMarkdown>
+                  </div>
+                  {msg.source === "fallback" && (
+                    <div className="mt-2 text-[10px] text-amber-400 font-medium flex items-center gap-1">
+                      <span className="material-symbols-outlined text-xs">wifi_off</span>
+                      <span>(offline mode)</span>
+                    </div>
+                  )}
                 </div>
               )}
               </div>

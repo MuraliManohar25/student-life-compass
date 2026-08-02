@@ -47,7 +47,7 @@ export const CareerChatbot: React.FC<CareerChatbotProps> = ({ roleTitle }) => {
       const data = await aiApi.ask(userText, profileContext);
       setMessages((prev) => [
         ...prev,
-        { id: (Date.now() + 1).toString(), sender: "mentor", text: data.reply || "I am processing your career query." },
+        { id: (Date.now() + 1).toString(), sender: "mentor", text: data.reply || "I am processing your career query.", source: data.source },
       ]);
     } catch (err) {
       console.error(err);
@@ -85,8 +85,16 @@ export const CareerChatbot: React.FC<CareerChatbotProps> = ({ roleTitle }) => {
               {msg.sender === "user" ? (
                 msg.text
               ) : (
-                <div className="prose prose-invert prose-xs max-w-none">
-                  <ReactMarkdown>{msg.text}</ReactMarkdown>
+                <div>
+                  <div className="prose prose-invert prose-xs max-w-none">
+                    <ReactMarkdown>{msg.text}</ReactMarkdown>
+                  </div>
+                  {msg.source === "fallback" && (
+                    <div className="mt-2 text-[9px] text-amber-400 font-medium flex items-center gap-1">
+                      <span className="material-symbols-outlined text-xs">wifi_off</span>
+                      <span>(offline mode)</span>
+                    </div>
+                  )}
                 </div>
               )}
             </div>

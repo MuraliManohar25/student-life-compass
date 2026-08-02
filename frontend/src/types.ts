@@ -61,6 +61,7 @@ export interface ChatMessage {
   sender: "mentor" | "user";
   text: string;
   timestamp?: string;
+  source?: string;
 }
 
 export interface ExpenseItem {

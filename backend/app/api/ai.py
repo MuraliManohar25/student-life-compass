@@ -13,5 +13,5 @@ def ask_ai(
     req: AskAiRequest,
     current_user: User = Depends(get_current_user)
 ):
-    reply = gemini_service.ask_assistant(req.prompt, req.context)
-    return {"reply": reply, "source": "gemini-ai"}
+    reply, used_real_ai = gemini_service.ask_assistant(req.prompt, req.context)
+    return {"reply": reply, "source": "gemini-ai" if used_real_ai else "fallback"}

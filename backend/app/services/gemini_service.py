@@ -95,7 +95,7 @@ class GeminiService:
             "resources": resources
         }
 
-    def chat_dialogue(self, prompt: str, target_role: str = "AI Engineer", profile_data: dict = None) -> str:
+    def chat_dialogue(self, prompt: str, target_role: str = "AI Engineer", profile_data: dict = None) -> tuple[str, bool]:
         # Check if Gemini API Key is available to perform live call
         if self.api_key:
             try:
@@ -107,20 +107,20 @@ class GeminiService:
                     f"You are an elite AI Career Mentor for a university student. {ctx_str}\nKeep responses concise and use short bullet points where appropriate.\nPrompt: {prompt}"
                 )
                 if response and response.text:
-                    return response.text
+                    return response.text, True
             except Exception as e:
                 print(f"Gemini API call failed: {e}")
 
         # Intelligent Fallback response (No fake stats)
         role_title = target_role or "technical"
         if "docker" in prompt.lower():
-            return f"Top {role_title} roles require containerized deployment and system architecture skills. Focus on hands-on Docker labs and deployment pipelines."
+            return f"Top {role_title} roles require containerized deployment and system architecture skills. Focus on hands-on Docker labs and deployment pipelines.", False
         elif "interview" in prompt.lower():
-            return f"To excel in {role_title} technical interviews, focus on system design, performance optimization, and core DSA algorithms."
+            return f"To excel in {role_title} technical interviews, focus on system design, performance optimization, and core DSA algorithms.", False
         else:
-            return f"Prioritizing hands-on projects and practical skill application for {role_title} will strengthen your overall readiness."
+            return f"Prioritizing hands-on projects and practical skill application for {role_title} will strengthen your overall readiness.", False
 
-    def ask_assistant(self, prompt: str, context: dict = None) -> str:
+    def ask_assistant(self, prompt: str, context: dict = None) -> tuple[str, bool]:
         if self.api_key:
             try:
                 import google.generativeai as genai
@@ -129,15 +129,15 @@ class GeminiService:
                 sys_inst = "You are Compass AI, a high-performance university student advisor. Provide concise, actionable, encouraging advice on study planning, career development, interview prep, skill building, and budget optimization."
                 res = model.generate_content(f"{sys_inst}\n\nStudent Query: {prompt}\nContext: {context}")
                 if res and res.text:
-                    return res.text
+                    return res.text, True
             except Exception as e:
                 print(f"Gemini AI Assistant error: {e}")
 
         if "exam" in prompt.lower() or "os" in prompt.lower():
-            return "For Operating Systems, prioritize Virtual Memory, Paging, Process Scheduling (Round Robin/CFS), and Deadlock Prevention (Banker's Algorithm). Allocate active recall practice today."
+            return "For Operating Systems, prioritize Virtual Memory, Paging, Process Scheduling (Round Robin/CFS), and Deadlock Prevention (Banker's Algorithm). Allocate active recall practice today.", False
         elif "budget" in prompt.lower() or "canteen" in prompt.lower():
-            return "Keep track of daily expenses and limit late-night delivery fees to maintain a healthy monthly budget runway."
+            return "Keep track of daily expenses and limit late-night delivery fees to maintain a healthy monthly budget runway.", False
         else:
-            return "Based on your academic workload, prioritizing high-impact assignments tonight will keep you on track."
+            return "Based on your academic workload, prioritizing high-impact assignments tonight will keep you on track.", False
 
 gemini_service = GeminiService()
