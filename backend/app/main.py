@@ -1,14 +1,18 @@
 import os
-from fastapi import FastAPI
+from fastapi import Depends, FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import RedirectResponse
+from sqlalchemy.orm import Session
 from app.core.config import settings
-from app.core.database import engine, Base, SessionLocal
+from app.core.database import engine, Base, SessionLocal, get_db
+from app.core.security import get_current_user
+from app.models.models import User
 from app.seed_data import seed_database
+from app.schemas.schemas import ProfileOut
 
 # API Routers
 from app.api.auth import router as auth_router
-from app.api.profile import router as profile_router
+from app.api.profile import router as profile_router, get_my_profile
 from app.api.career import router as career_router
 from app.api.study import router as study_router
 from app.api.budget import router as budget_router
@@ -68,6 +72,7 @@ def root():
         "health_check": "/api/health",
         "endpoints": {
             "auth": "/api/auth/me",
+            "profile": "/api/profile/me",
             "dashboard": "/api/dashboard",
             "career": "/api/career/analyze",
             "study_plan": "/api/study-plan",
@@ -79,6 +84,14 @@ def root():
             "ai_ask": "/api/ai/ask"
         }
     }
+
+@app.get("/profile/me", response_model=ProfileOut)
+@app.get("/api/profile/me", response_model=ProfileOut)
+def profile_me_alias(
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    return get_my_profile(current_user=current_user, db=db)
 
 @app.get("/health")
 @app.get("/api/health")

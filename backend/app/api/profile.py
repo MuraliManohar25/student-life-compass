@@ -33,7 +33,7 @@ def get_my_profile(
         "target_role": profile.target_role or "",
         "market_match_index": profile.market_match_index or 0.0,
         "sleep_hours": profile.sleep_hours or 0.0,
-        "monthly_budget": user_monthly_budget
+        "monthly_budget": user_monthly_budget,
     }
 
 @router.put("/me")
