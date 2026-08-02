@@ -8,7 +8,6 @@ import { IntelligenceReportView } from "./components/IntelligenceReportView";
 import { StudyPlannerView } from "./components/StudyPlannerView";
 import { BudgetView } from "./components/BudgetView";
 import { NearbyPlacesView } from "./components/NearbyPlacesView";
-import { PlacementView } from "./components/PlacementView";
 import { RiskPredictionView } from "./components/RiskPredictionView";
 import { AskAiModal } from "./components/AskAiModal";
 import { SettingsView } from "./components/SettingsView";
@@ -145,8 +144,6 @@ export function App() {
         {activeTab === "budget" && <BudgetView />}
 
         {activeTab === "nearby-places" && <NearbyPlacesView />}
-
-        {activeTab === "placement" && <PlacementView />}
 
         {activeTab === "risk-prediction" && <RiskPredictionView />}
 

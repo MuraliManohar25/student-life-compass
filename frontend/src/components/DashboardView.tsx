@@ -19,7 +19,7 @@ const DEFAULT_TASKS: MissionTask[] = [
   { id: "1", title: "Complete DBMS Lab Assignment 4", completed: false, category: "Academic" },
   { id: "2", title: "Solve 2 DSA Problems on LeetCode", completed: true, category: "Career" },
   { id: "3", title: "Keep daily hostel spend below ₹150", completed: false, category: "Budget" },
-  { id: "4", title: "Submit application for Stripe Intern", completed: true, category: "Placement" },
+  { id: "4", title: "Submit application for Stripe Intern", completed: true, category: "Career" },
 ];
 
 const DEFAULT_EVENTS: TimelineEvent[] = [
