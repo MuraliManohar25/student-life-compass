@@ -122,8 +122,13 @@ export const NearbyEssentialsCard: React.FC<NearbyEssentialsCardProps> = ({ setA
                     <h4 className="font-bold text-xs text-white group-hover:text-[#c3c0ff] transition-colors truncate">
                       {item.name}
                     </h4>
-                    <p className="text-[10px] text-[#c7c4d8] truncate">
-                      {item.category} • {item.distanceMeters} m
+                    <p className="text-[10px] text-[#c7c4d8] truncate flex items-center gap-1.5 flex-wrap">
+                      <span>{item.category} • {item.distanceMeters} m</span>
+                      {item.category === "Library" && item.libraryAccess && (
+                        <span className="text-[9px] px-1.5 py-0.2 rounded bg-white/10 text-cyan-300 font-medium">
+                          {item.libraryAccess}
+                        </span>
+                      )}
                     </p>
                   </div>
                 </div>
@@ -132,8 +137,8 @@ export const NearbyEssentialsCard: React.FC<NearbyEssentialsCardProps> = ({ setA
                   <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full border ${item.statusColor}`}>
                     {item.status} ({item.aiScorePercent}%)
                   </span>
-                  <span className="text-[10px] font-semibold text-emerald-400">
-                    {item.estimatedCost === 0 ? "Free" : `₹${item.estimatedCost}`}
+                  <span className="text-[9px] font-semibold text-emerald-400">
+                    {item.entryFeeText || (item.estimatedCost === 0 ? "Free" : `₹${item.estimatedCost}`)}
                   </span>
                 </div>
               </div>

@@ -2,6 +2,13 @@
 
 export type Coordinates = [number, number];
 
+export type LibraryAccessType =
+  | "Public Library"
+  | "University Library"
+  | "Membership Required"
+  | "Visitor Pass Available"
+  | "Access information unavailable.";
+
 export interface RealPlace {
   id: string;
   name: string;
@@ -30,6 +37,12 @@ export interface RealPlace {
   isStudentFriendly: boolean;
   openingHours?: string;
   phone?: string;
+  website?: string;
+  wheelchair?: string;
+  libraryAccess?: LibraryAccessType;
+  entryFeeText?: string;
+  chargingPoints?: string;
+  seatingCapacity?: string;
   tags: Record<string, string>;
 }
 
@@ -43,6 +56,61 @@ export const calculateDistanceMeters = (from: Coordinates, to: Coordinates): num
     Math.sin(dLat / 2) ** 2 +
     Math.cos(rad(from[0])) * Math.cos(rad(to[0])) * Math.sin(dLon / 2) ** 2;
   return Math.round(R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a)));
+};
+
+// Parse Library Access from verified OSM tags & name
+export const parseLibraryAccess = (tags: Record<string, string>, name: string, category: string): LibraryAccessType => {
+  if (category !== "Library") return "Access information unavailable.";
+  
+  const lowerName = name.toLowerCase();
+  const access = (tags.access || "").toLowerCase();
+  const fee = (tags.fee || "").toLowerCase();
+  const operator = (tags.operator || "").toLowerCase();
+  const membership = (tags.membership || "").toLowerCase();
+
+  if (access === "public" || operator.includes("public") || operator.includes("city") || lowerName.includes("public") || lowerName.includes("central library")) {
+    return "Public Library";
+  }
+  if (access === "university" || access === "students" || access === "private" || lowerName.includes("university") || lowerName.includes("college") || lowerName.includes("campus") || operator.includes("university") || operator.includes("college")) {
+    return "University Library";
+  }
+  if (membership === "yes" || membership === "required" || fee === "membership" || lowerName.includes("subscription")) {
+    return "Membership Required";
+  }
+  if (tags.visitor === "yes" || tags.visitor_pass === "yes") {
+    return "Visitor Pass Available";
+  }
+
+  return "Access information unavailable.";
+};
+
+// Parse Entry Fee from verified OSM tags
+export const parseEntryFeeText = (tags: Record<string, string>, category: string): string => {
+  const fee = (tags.fee || tags.charge || tags.entrance_fee || "").toLowerCase();
+  
+  if (fee === "no" || fee === "none" || fee === "free") {
+    return "Free Entry";
+  }
+  if (fee === "yes" || fee.includes("₹") || fee.includes("rs") || fee.includes("inr")) {
+    return `Entry Fee ${tags.charge || tags.fee || "Required"}`;
+  }
+  if (fee === "membership") {
+    return "Membership Required";
+  }
+  if (category === "Park" && (fee === "" || fee === "no")) {
+    return "Free Entry";
+  }
+
+  return "Entry fee not available.";
+};
+
+// Parse Wheelchair accessibility
+export const parseWheelchair = (tags: Record<string, string>): string | undefined => {
+  const w = (tags.wheelchair || "").toLowerCase();
+  if (w === "yes") return "Wheelchair Accessible";
+  if (w === "limited") return "Limited Wheelchair Access";
+  if (w === "no") return "Not Wheelchair Accessible";
+  return undefined;
 };
 
 // Estimated cost by category
@@ -187,6 +255,16 @@ export const fetchRealNearbyPlaces = async (userLoc: Coordinates): Promise<RealP
 
       const street = tags["addr:street"] || tags["addr:suburb"] || tags["addr:city"] || "Nearby Area";
 
+      const libraryAccess = parseLibraryAccess(tags, displayName, category);
+      const entryFeeText = parseEntryFeeText(tags, category);
+      const wheelchair = parseWheelchair(tags);
+      const website = tags.website || tags["contact:website"];
+      const phone = tags.phone || tags["contact:phone"];
+      const openingHours = tags.opening_hours;
+
+      const chargingPoints = tags.socket || tags.power_supply ? "Charging Points Available" : undefined;
+      const seatingCapacity = tags.capacity || tags.seats ? `${tags.capacity || tags.seats} Seats` : undefined;
+
       return [
         {
           id: `osm-${el.id}`,
@@ -200,8 +278,14 @@ export const fetchRealNearbyPlaces = async (userLoc: Coordinates): Promise<RealP
           rating,
           hasWifi,
           isStudentFriendly,
-          openingHours: tags.opening_hours || "08:00 AM – 10:00 PM",
-          phone: tags.phone || tags["contact:phone"],
+          openingHours,
+          phone,
+          website,
+          wheelchair,
+          libraryAccess,
+          entryFeeText,
+          chargingPoints,
+          seatingCapacity,
           tags,
         },
       ];
@@ -214,18 +298,18 @@ export const fetchRealNearbyPlaces = async (userLoc: Coordinates): Promise<RealP
   }
 };
 
-// Fallback generator if network/Overpass API times out (strictly geographic relative to user's real GPS coordinates)
+// Fallback generator if network/Overpass API times out
 const generateGeographicFallbackPlaces = (userLoc: Coordinates): RealPlace[] => {
   const [lat, lon] = userLoc;
   const offsets = [
-    { name: "Student Cafe & Library", cat: "Cafe" as const, dLat: 0.003, dLon: 0.002, cost: 120, rating: 4.6, wifi: true },
-    { name: "College Canteen", cat: "Fast Food" as const, dLat: -0.002, dLon: 0.001, cost: 60, rating: 4.5, wifi: false },
-    { name: "Campus Central Library", cat: "Library" as const, dLat: 0.004, dLon: -0.003, cost: 0, rating: 4.8, wifi: true },
-    { name: "City Medical & Pharmacy", cat: "Medical Store" as const, dLat: -0.004, dLon: -0.002, cost: 150, rating: 4.7, wifi: false },
-    { name: "Hostel Fitness Gym", cat: "Gym" as const, dLat: 0.005, dLon: 0.004, cost: 200, rating: 4.4, wifi: true },
-    { name: "Stationery & Book Store", cat: "Stationery" as const, dLat: -0.001, dLon: 0.003, cost: 80, rating: 4.3, wifi: false },
-    { name: "Premium Fine Dining Restaurant", cat: "Restaurant" as const, dLat: 0.008, dLon: 0.006, cost: 650, rating: 4.8, wifi: true },
-    { name: "Campus Bus Stop", cat: "Bus Stop" as const, dLat: 0.001, dLon: -0.001, cost: 20, rating: 4.2, wifi: false },
+    { name: "Student Cafe & Library", cat: "Cafe" as const, dLat: 0.003, dLon: 0.002, cost: 120, rating: 4.6, wifi: true, access: "Public Library" as const, fee: "Free Entry" },
+    { name: "College Canteen", cat: "Fast Food" as const, dLat: -0.002, dLon: 0.001, cost: 60, rating: 4.5, wifi: false, fee: "Entry fee not available." },
+    { name: "Campus Central Library", cat: "Library" as const, dLat: 0.004, dLon: -0.003, cost: 0, rating: 4.8, wifi: true, access: "University Library" as const, fee: "Free Entry" },
+    { name: "City Medical & Pharmacy", cat: "Medical Store" as const, dLat: -0.004, dLon: -0.002, cost: 150, rating: 4.7, wifi: false, fee: "Entry fee not available." },
+    { name: "Hostel Fitness Gym", cat: "Gym" as const, dLat: 0.005, dLon: 0.004, cost: 200, rating: 4.4, wifi: true, fee: "Membership Required" },
+    { name: "Stationery & Book Store", cat: "Stationery" as const, dLat: -0.001, dLon: 0.003, cost: 80, rating: 4.3, wifi: false, fee: "Free Entry" },
+    { name: "Premium Fine Dining Restaurant", cat: "Restaurant" as const, dLat: 0.008, dLon: 0.006, cost: 650, rating: 4.8, wifi: true, fee: "Entry fee not available." },
+    { name: "Campus Bus Stop", cat: "Bus Stop" as const, dLat: 0.001, dLon: -0.001, cost: 20, rating: 4.2, wifi: false, fee: "Free Entry" },
   ];
 
   return offsets.map((item, idx) => {
@@ -243,7 +327,8 @@ const generateGeographicFallbackPlaces = (userLoc: Coordinates): RealPlace[] => 
       rating: item.rating,
       hasWifi: item.wifi,
       isStudentFriendly: item.cost <= 150 || item.cat === "Library",
-      openingHours: "08:00 AM – 10:00 PM",
+      libraryAccess: item.access || "Access information unavailable.",
+      entryFeeText: item.fee || "Entry fee not available.",
       tags: {},
     };
   });

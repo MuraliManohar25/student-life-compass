@@ -1,13 +1,21 @@
-// Local Discovery Engine: Calculates AI Recommendation Scores, dynamic AI explanations, student highlights, and handles visited expense recording synced with BudgetEngine & PerformanceEngine.
+// Local Discovery Engine: Calculates AI Recommendation Scores, 5-tier affordability, contextual insights, verified explanations, and handles visited expense recording.
 
 import { RealPlace } from "./overpassApi";
 import { BudgetEngine } from "./budgetEngine";
 
+export type AffordabilityTier =
+  | "Highly Affordable"
+  | "Affordable"
+  | "Moderate Spend"
+  | "Above Today's Budget"
+  | "Not Recommended Today";
+
 export interface EvaluatedPlace extends RealPlace {
   budgetMatchPercent: number;
   aiScorePercent: number;
-  status: "Highly Recommended" | "Affordable" | "Moderate Spend" | "Not Recommended";
+  status: AffordabilityTier;
   statusColor: string;
+  contextualInsight: string;
   explanations: string[];
   notRecommendedReason?: string;
   afterVisitRemainingBudget: number;
@@ -38,7 +46,7 @@ const FAVORITES_KEY = "compass_favorites_v1";
 const VISITED_KEY = "compass_visited_v1";
 
 export class LocalDiscoveryEngine {
-  // Evaluate AI Recommendation Scores for an array of real places against current budget
+  // Evaluate AI Recommendation Scores & verified insights for an array of real places
   public static evaluatePlaces(places: RealPlace[], monthKey?: string): EvaluatedPlace[] {
     const budgetCalcs = BudgetEngine.getCalculations(monthKey);
     const safeLimit = budgetCalcs.safeDailyLimit || 180;
@@ -79,43 +87,91 @@ export class LocalDiscoveryEngine {
           studentFriendliness * 0.15
       );
 
-      // Status Badges & Colors
-      let status: EvaluatedPlace["status"] = "Affordable";
+      // 5-Tier Affordability Engine & Status Badges
+      let status: AffordabilityTier = "Affordable";
       let statusColor = "bg-[#4f46e5]/20 text-[#c3c0ff] border-[#4f46e5]/30";
       let notRecommendedReason: string | undefined = undefined;
 
-      if (cost > safeLimit * 1.5 || aiScorePercent < 50) {
-        status = "Not Recommended";
+      if (cost > safeLimit * 2) {
+        status = "Not Recommended Today";
         statusColor = "bg-rose-500/20 text-rose-300 border-rose-500/30";
-        notRecommendedReason = `This purchase (₹${cost}) exceeds today's safe spending limit (₹${safeLimit}) by ₹${cost - safeLimit}.`;
-      } else if (aiScorePercent >= 85) {
-        status = "Highly Recommended";
+        notRecommendedReason = `Estimated cost (₹${cost}) exceeds today's safe spending limit (₹${safeLimit}) by more than 2x.`;
+      } else if (cost > safeLimit * 1.4) {
+        status = "Above Today's Budget";
+        statusColor = "bg-amber-500/20 text-amber-300 border-amber-500/30";
+        notRecommendedReason = `Estimated cost (₹${cost}) exceeds today's safe limit (₹${safeLimit}).`;
+      } else if (cost > safeLimit) {
+        status = "Moderate Spend";
+        statusColor = "bg-yellow-500/20 text-yellow-300 border-yellow-500/30";
+      } else if (cost <= 0 || cost <= safeLimit * 0.5) {
+        status = "Highly Affordable";
         statusColor = "bg-emerald-500/20 text-emerald-300 border-emerald-500/30";
-      } else if (aiScorePercent >= 70) {
+      } else {
         status = "Affordable";
         statusColor = "bg-cyan-500/20 text-cyan-300 border-cyan-500/30";
-      } else {
-        status = "Moderate Spend";
-        statusColor = "bg-amber-500/20 text-amber-300 border-amber-500/30";
       }
 
-      // Dynamic AI Explanation Points
+      // Contextual AI Student Insights
+      let contextualInsight = "";
+      if (place.category === "Library") {
+        if (place.libraryAccess === "Public Library") {
+          contextualInsight = "This public library is suitable for self-study and free access.";
+        } else if (place.libraryAccess === "University Library") {
+          contextualInsight = "This university library access is restricted to campus students/staff.";
+        } else if (place.libraryAccess === "Membership Required") {
+          contextualInsight = "Membership or registration is required prior to entry.";
+        } else {
+          contextualInsight = "Library access terms are not explicitly listed in data source.";
+        }
+      } else if (place.category === "Cafe") {
+        if (place.hasWifi && cost <= safeLimit) {
+          contextualInsight = "This café offers Wi-Fi and fits today's safe daily budget.";
+        } else if (place.hasWifi) {
+          contextualInsight = "Offers Wi-Fi for studying, but price is slightly above safe daily cap.";
+        } else {
+          contextualInsight = "Popular student spot for coffee and quick study sessions.";
+        }
+      } else if (place.category === "Gym") {
+        if (cost > safeLimit) {
+          contextualInsight = "This gym exceeds today's recommended spending limit.";
+        } else {
+          contextualInsight = "Affordable fitness facility near your location.";
+        }
+      } else if (place.category === "Hospital" || place.category === "Medical Store") {
+        contextualInsight = "This hospital or pharmacy is your nearest medical facility.";
+      } else if (place.category === "Stationery") {
+        contextualInsight = "Essential book & stationery store for academic supplies.";
+      } else {
+        contextualInsight = `${place.category} located ${place.distanceMeters}m from your current GPS position.`;
+      }
+
+      // Verified Explanation Points
       const explanations: string[] = [];
 
-      if (cost === 0) {
-        explanations.push("Free amenity (100% budget fit)");
-      } else if (cost <= safeLimit) {
-        explanations.push(`Fits today's budget (₹${cost} vs ₹${safeLimit} safe limit)`);
-      } else {
-        explanations.push(`⚠️ Exceeds today's safe daily limit (₹${cost} vs ₹${safeLimit})`);
+      explanations.push(`Only ${place.distanceMeters}m away (${place.walkingTimeMins} min walk)`);
+
+      if (place.entryFeeText === "Free Entry") {
+        explanations.push("Free entry");
+      } else if (place.entryFeeText && place.entryFeeText !== "Entry fee not available.") {
+        explanations.push(place.entryFeeText);
       }
 
-      explanations.push(`Only ${place.walkingTimeMins} minute(s) walking distance (${place.distanceMeters} m)`);
+      if (place.category === "Library") {
+        explanations.push("Quiet study environment");
+        explanations.push("Suitable for studying");
+      } else if (place.hasWifi) {
+        explanations.push("Wi-Fi & study-friendly environment");
+      }
 
-      if (place.hasWifi) explanations.push("Free Wi-Fi & study-friendly environment");
-      else if (place.isStudentFriendly) explanations.push("Affordable pricing popular among students");
+      if (cost <= safeLimit) {
+        explanations.push("Within today's budget");
+      } else {
+        explanations.push(`₹${cost} vs ₹${safeLimit} safe daily cap`);
+      }
 
-      explanations.push(`Highly rated by peers (${place.rating} ⭐)`);
+      if (place.rating >= 4.5) {
+        explanations.push(`High student rating (${place.rating} ⭐)`);
+      }
 
       // Simulated Expense Prediction after visit
       const afterVisitRemainingBudget = Math.max(0, remainingMonthly - cost);
@@ -127,6 +183,7 @@ export class LocalDiscoveryEngine {
         aiScorePercent,
         status,
         statusColor,
+        contextualInsight,
         explanations,
         notRecommendedReason,
         afterVisitRemainingBudget,
@@ -135,7 +192,7 @@ export class LocalDiscoveryEngine {
     });
   }
 
-  // Generate Top Student Highlights (Affordable Lunch, Study Cafe, Hospital, etc.)
+  // Generate Top Student Highlights
   public static getStudentHighlights(evaluated: EvaluatedPlace[]): StudentHighlights {
     const sorted = [...evaluated].sort((a, b) => b.aiScorePercent - a.aiScorePercent);
 
@@ -185,7 +242,7 @@ export class LocalDiscoveryEngine {
     return next;
   }
 
-  // Visited Log Management & Sync with Budget Engine
+  // Visited Log Management
   public static getVisitedHistory(): VisitedRecord[] {
     try {
       const raw = localStorage.getItem(VISITED_KEY);
@@ -219,7 +276,7 @@ export class LocalDiscoveryEngine {
     const updated = [newRecord, ...history];
     localStorage.setItem(VISITED_KEY, JSON.stringify(updated));
 
-    // SYNC WITH BUDGET ENGINE: Automatically adds expense transaction to current month!
+    // SYNC WITH BUDGET ENGINE
     if (amountSpent > 0) {
       try {
         let budgetCat: any = "Others";

@@ -604,14 +604,40 @@ export const NearbyPlacesView: React.FC = () => {
                               <span className={`text-[10px] font-bold uppercase tracking-wider px-2.5 py-0.5 rounded-full border ${place.statusColor}`}>
                                 {place.status}
                               </span>
+
+                              {/* Library Access Badge */}
+                              {place.category === "Library" && (
+                                <span className={`text-[10px] font-bold uppercase tracking-wider px-2.5 py-0.5 rounded-full border ${
+                                  place.libraryAccess === "Public Library"
+                                    ? "bg-emerald-500/20 text-emerald-300 border-emerald-500/30"
+                                    : place.libraryAccess === "University Library"
+                                    ? "bg-purple-500/20 text-purple-300 border-purple-500/30"
+                                    : place.libraryAccess === "Membership Required"
+                                    ? "bg-amber-500/20 text-amber-300 border-amber-500/30"
+                                    : "bg-white/10 text-[#c7c4d8] border-white/10"
+                                }`}>
+                                  {place.libraryAccess}
+                                </span>
+                              )}
+
+                              {/* Entry Fee Badge */}
+                              <span className={`text-[10px] font-bold uppercase tracking-wider px-2.5 py-0.5 rounded-full border ${
+                                place.entryFeeText === "Free Entry"
+                                  ? "bg-emerald-500/20 text-emerald-300 border-emerald-500/30"
+                                  : place.entryFeeText === "Entry fee not available."
+                                  ? "bg-white/5 text-[#c7c4d8] border-white/10"
+                                  : "bg-cyan-500/20 text-cyan-300 border-cyan-500/30"
+                              }`}>
+                                {place.entryFeeText}
+                              </span>
                             </div>
 
-                            <p className="text-xs text-[#c7c4d8] mt-0.5">
+                            <p className="text-xs text-[#c7c4d8] mt-1">
                               {place.address} • {place.distanceMeters} m ({place.walkingTimeMins} min walk)
                             </p>
                           </div>
 
-                          {/* AI Score Circle */}
+                          {/* AI Score & Rating */}
                           <div className="flex items-center gap-3 shrink-0 self-start sm:self-auto">
                             <div className="text-right">
                               <span className="text-[10px] font-bold text-[#c3c0ff] uppercase block">AI Score</span>
@@ -623,7 +649,7 @@ export const NearbyPlacesView: React.FC = () => {
                           </div>
                         </div>
 
-                        {/* Metric Row: Estimated Cost & Budget Match */}
+                        {/* Metric Row: Estimated Cost, Today's Limit, Budget Match, Walking Time */}
                         <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 p-3 rounded-2xl bg-white/5 border border-white/5">
                           <div>
                             <span className="text-[10px] text-[#c7c4d8] uppercase font-bold block">Estimated Cost</span>
@@ -648,17 +674,101 @@ export const NearbyPlacesView: React.FC = () => {
                           </div>
                         </div>
 
+                        {/* VERIFIED PLACE DETAILS & METADATA GRID */}
+                        <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5 p-3 rounded-2xl bg-black/20 border border-white/5 text-[11px]">
+                          <div>
+                            <span className="text-[9px] text-[#c7c4d8] font-bold uppercase block">Opening Hours</span>
+                            <span className="font-semibold text-white truncate block">
+                              {place.openingHours || "Information not available."}
+                            </span>
+                          </div>
+
+                          <div>
+                            <span className="text-[9px] text-[#c7c4d8] font-bold uppercase block">Contact Number</span>
+                            <span className="font-semibold text-white truncate block">
+                              {place.phone || "Information not available."}
+                            </span>
+                          </div>
+
+                          <div>
+                            <span className="text-[9px] text-[#c7c4d8] font-bold uppercase block">Website</span>
+                            {place.website ? (
+                              <a href={place.website} target="_blank" rel="noreferrer" onClick={(e) => e.stopPropagation()} className="font-semibold text-cyan-300 underline truncate block">
+                                Visit Website
+                              </a>
+                            ) : (
+                              <span className="font-semibold text-[#c7c4d8]/70 block">Information not available.</span>
+                            )}
+                          </div>
+
+                          <div>
+                            <span className="text-[9px] text-[#c7c4d8] font-bold uppercase block">Wheelchair Access</span>
+                            <span className="font-semibold text-white truncate block">
+                              {place.wheelchair || "Information not available."}
+                            </span>
+                          </div>
+                        </div>
+
+                        {/* STUDY FRIENDLINESS AUDIT GRID (For Libraries, Cafes, Study Spaces) */}
+                        {(place.category === "Library" || place.category === "Cafe" || place.category === "Stationery") && (
+                          <div className="p-3 rounded-2xl bg-white/[0.03] border border-white/5 space-y-2">
+                            <span className="text-[10px] font-bold text-[#c3c0ff] uppercase tracking-wider block">
+                              Study Friendliness Audit
+                            </span>
+                            <div className="grid grid-cols-2 sm:grid-cols-5 gap-2 text-[10px]">
+                              <div className="p-2 rounded-xl bg-white/5 border border-white/5">
+                                <span className="text-[#c7c4d8] block">Environment</span>
+                                <span className="font-bold text-white">
+                                  {place.category === "Library" ? "Quiet Environment" : place.category === "Cafe" ? "Moderate Noise" : "Information not available."}
+                                </span>
+                              </div>
+                              <div className="p-2 rounded-xl bg-white/5 border border-white/5">
+                                <span className="text-[#c7c4d8] block">Wi-Fi</span>
+                                <span className="font-bold text-white">
+                                  {place.hasWifi ? "Free Wi-Fi" : "Information not available."}
+                                </span>
+                              </div>
+                              <div className="p-2 rounded-xl bg-white/5 border border-white/5">
+                                <span className="text-[#c7c4d8] block">Charging Points</span>
+                                <span className="font-bold text-white">
+                                  {place.chargingPoints || "Information not available."}
+                                </span>
+                              </div>
+                              <div className="p-2 rounded-xl bg-white/5 border border-white/5">
+                                <span className="text-[#c7c4d8] block">Seating</span>
+                                <span className="font-bold text-white">
+                                  {place.seatingCapacity || "Information not available."}
+                                </span>
+                              </div>
+                              <div className="p-2 rounded-xl bg-white/5 border border-white/5">
+                                <span className="text-[#c7c4d8] block">Student Friendly</span>
+                                <span className="font-bold text-emerald-400">
+                                  {place.isStudentFriendly ? "Student Friendly" : "Information not available."}
+                                </span>
+                              </div>
+                            </div>
+                          </div>
+                        )}
+
+                        {/* CONTEXTUAL AI STUDENT INSIGHT BOX */}
+                        {place.contextualInsight && (
+                          <div className="p-3 rounded-2xl bg-[#4f46e5]/10 border border-[#4f46e5]/20 flex items-center gap-2 text-xs text-[#c3c0ff]">
+                            <span className="material-symbols-outlined text-sm shrink-0">psychology</span>
+                            <span>{place.contextualInsight}</span>
+                          </div>
+                        )}
+
                         {/* AI Explanation Box */}
                         <div className="p-3.5 rounded-2xl bg-white/5 border border-white/5 space-y-1.5">
                           <span className="text-[10px] font-bold text-[#c3c0ff] uppercase tracking-wider flex items-center gap-1">
                             <span className="material-symbols-outlined text-xs">auto_awesome</span>
-                            <span>Why Recommended</span>
+                            <span>Recommended Because</span>
                           </span>
 
                           <ul className="space-y-1 text-xs text-white/90">
                             {place.explanations.map((exp, idx) => (
                               <li key={idx} className="flex items-center gap-2">
-                                <span className="text-emerald-400 font-bold">•</span>
+                                <span className="text-emerald-400 font-bold">✓</span>
                                 <span>{exp}</span>
                               </li>
                             ))}
