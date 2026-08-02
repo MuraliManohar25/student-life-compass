@@ -2,6 +2,7 @@ import axios from 'axios';
 
 const DEV_API_FALLBACK = 'http://localhost:8000';
 const API_PATH = '/api';
+const PRODUCTION_API_BASE_URL = 'https://student-life-compass-1.onrender.com';
 
 const getViteEnv = () => {
   if (typeof import.meta !== 'undefined' && import.meta && 'env' in import.meta) {
@@ -52,7 +53,7 @@ export const resolveApiBaseUrl = (runtime: { env?: Record<string, string | undef
     return `${window.location.origin}${API_PATH}`;
   }
 
-  return `${DEV_API_FALLBACK}${API_PATH}`;
+  return PRODUCTION_API_BASE_URL;
 };
 
 const API_BASE_URL = resolveApiBaseUrl();
