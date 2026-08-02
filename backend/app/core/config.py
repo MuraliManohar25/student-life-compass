@@ -53,36 +53,27 @@ class Settings(BaseSettings):
     DATABASE_URL: str = os.getenv("DATABASE_URL", "sqlite:///./student_compass.db")
     GEMINI_API_KEY: str = os.getenv("GEMINI_API_KEY", "")
 
-    CORS_ORIGINS: List[str] = DEFAULT_CORS_ORIGINS
-
-    @field_validator("CORS_ORIGINS", mode="before")
-    @classmethod
-    def parse_cors_origins(cls, value: Any) -> List[str]:
-        if value is None or value == "":
-            return DEFAULT_CORS_ORIGINS
-
-        if isinstance(value, (list, tuple, set)):
-            return [str(item).strip() for item in value if str(item).strip()]
-
-        if isinstance(value, str):
-            stripped = value.strip()
-
-            if not stripped:
-                return DEFAULT_CORS_ORIGINS
-
-            if stripped.startswith("[") and stripped.endswith("]"):
-                try:
-                    parsed = json.loads(stripped)
-                    if isinstance(parsed, list):
-                        return [str(item).strip() for item in parsed if str(item).strip()]
-                except json.JSONDecodeError:
-                    pass
-
-            return [item.strip() for item in stripped.split(",") if item.strip()]
-
-        return [str(value).strip()]
-
     model_config = SettingsConfigDict(env_file=".env", env_file_encoding="utf-8", extra="ignore")
 
 
 settings = Settings()
+
+# Manually parse CORS_ORIGINS from environment to avoid pydantic_settings parsing issues
+def _parse_cors_origins() -> List[str]:
+    cors_env = os.getenv("CORS_ORIGINS", "")
+    if not cors_env or not cors_env.strip():
+        return DEFAULT_CORS_ORIGINS
+
+    stripped = cors_env.strip()
+
+    if stripped.startswith("[") and stripped.endswith("]"):
+        try:
+            parsed = json.loads(stripped)
+            if isinstance(parsed, list):
+                return [str(item).strip() for item in parsed if str(item).strip()]
+        except json.JSONDecodeError:
+            pass
+
+    return [item.strip() for item in stripped.split(",") if item.strip()]
+
+settings.CORS_ORIGINS = _parse_cors_origins()
