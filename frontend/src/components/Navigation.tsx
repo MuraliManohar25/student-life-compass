@@ -94,7 +94,7 @@ export const Navigation: React.FC<NavigationProps> = ({
   const mainNavItems: { id: NavTab; label: string; icon: string }[] = [
     { id: "dashboard", label: "Dashboard", icon: "dashboard" },
     { id: "career-mentor", label: "Career Mentor", icon: "psychology" },
-    { id: "intelligence-score", label: "Intelligence Score", icon: "insights" },
+    { id: "intelligence-score", label: "Performance Report", icon: "insights" },
     { id: "study-planner", label: "Study Planner", icon: "event_note" },
     { id: "budget", label: "Budget", icon: "payments" },
     { id: "nearby-places", label: "Nearby Places", icon: "map" },
