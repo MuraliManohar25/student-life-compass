@@ -10,81 +10,8 @@ from app.schemas.schemas import UserSignup, UserLogin, Token, UserOut, ForgotPas
 
 router = APIRouter(prefix="/auth", tags=["Authentication"])
 
-# Allowed college email domains
-ALLOWED_COLLEGE_DOMAINS = [
-    ".edu",
-    ".ac.in",
-    ".ac.uk",
-    ".edu.au",
-    ".ac.jp",
-    ".edu.sg",
-    ".ac.ca",
-    ".edu.hk",
-    ".ac.nz",
-    ".edu.in",
-    ".iit.ac.in",
-    ".nit.ac.in",
-    ".bits-pilani.ac.in",
-    ".manipal.edu",
-    ".vit.ac.in",
-    ".srmap.edu.in",
-    ".amrita.edu",
-    ".christuniversity.in",
-    ".jainuniversity.ac.in",
-    ".msrit.edu",
-    ".rvce.edu.in",
-    ".bmsce.ac.in",
-    ".pes.edu",
-    ".cmrit.ac.in",
-    ".sjsu.edu",
-    ".stanford.edu",
-    ".mit.edu",
-    ".harvard.edu",
-    ".berkeley.edu",
-    ".cmu.edu",
-    ".gatech.edu",
-    ".umich.edu",
-    ".illinois.edu",
-    ".cornell.edu",
-    ".princeton.edu",
-    ".yale.edu",
-    ".columbia.edu",
-    ".nyu.edu",
-    ".usc.edu",
-    ".ucla.edu",
-    ".utexas.edu",
-    ".washington.edu",
-    ".northwestern.edu",
-    ".duke.edu",
-    ".unc.edu",
-    ".uva.edu",
-    ".ucsd.edu",
-    ".ucdavis.edu",
-    ".ucirvine.edu",
-    ".ucsb.edu",
-    ".ucsc.edu",
-    ".ucr.edu",
-    ".uci.edu",
-    ".ucmerced.edu",
-]
-
-def is_college_email(email: str) -> bool:
-    """Check if email belongs to an allowed college domain."""
-    email_lower = email.lower()
-    for domain in ALLOWED_COLLEGE_DOMAINS:
-        if email_lower.endswith(domain):
-            return True
-    return False
-
 @router.post("/signup", response_model=Token)
 def signup(user_data: UserSignup, db: Session = Depends(get_db)):
-    # Validate college email domain
-    if not is_college_email(user_data.email):
-        raise HTTPException(
-            status_code=400,
-            detail="Registration is restricted to college/university email addresses only (.edu, .ac.in, .ac.uk, etc.)"
-        )
-    
     existing_user = db.query(User).filter(User.email == user_data.email).first()
     if existing_user:
         raise HTTPException(status_code=400, detail="Email already registered")
@@ -115,13 +42,6 @@ def signup(user_data: UserSignup, db: Session = Depends(get_db)):
 
 @router.post("/login", response_model=Token)
 def login(login_data: UserLogin, db: Session = Depends(get_db)):
-    # Validate college email domain
-    if not is_college_email(login_data.email):
-        raise HTTPException(
-            status_code=400,
-            detail="Login is restricted to college/university email addresses only (.edu, .ac.in, .ac.uk, etc.)"
-        )
-    
     user = db.query(User).filter(User.email == login_data.email).first()
     if not user or not verify_password(login_data.password, user.hashed_password):
         raise HTTPException(
