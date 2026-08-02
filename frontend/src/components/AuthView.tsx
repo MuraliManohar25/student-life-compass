@@ -7,11 +7,18 @@ interface AuthViewProps {
 
 export const AuthView: React.FC<AuthViewProps> = ({ onAuthSuccess }) => {
   const [isLogin, setIsLogin] = useState(true);
+  const [showForgotPassword, setShowForgotPassword] = useState(false);
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [fullName, setFullName] = useState("");
   const [loading, setLoading] = useState(false);
   const [errorMsg, setErrorMsg] = useState("");
+  const [successMsg, setSuccessMsg] = useState("");
+  
+  // Forgot password states
+  const [resetToken, setResetToken] = useState("");
+  const [newPassword, setNewPassword] = useState("");
+  const [resetStep, setResetStep] = useState<"request" | "reset">("request");
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -45,6 +52,64 @@ export const AuthView: React.FC<AuthViewProps> = ({ onAuthSuccess }) => {
     } catch (err: any) {
       console.error(err);
       const msg = err.response?.data?.detail || "Authentication failed. Please check your credentials.";
+      setErrorMsg(msg);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleForgotPassword = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setErrorMsg("");
+    setSuccessMsg("");
+    
+    if (!email) {
+      setErrorMsg("Please enter your email address.");
+      return;
+    }
+
+    setLoading(true);
+
+    try {
+      const data = await authApi.forgotPassword(email);
+      if (data.reset_token) {
+        setResetToken(data.reset_token);
+        setResetStep("reset");
+        setSuccessMsg("Reset token generated. Enter your new password below.");
+      } else {
+        setSuccessMsg("If an account exists, a reset link has been sent to your email.");
+      }
+    } catch (err: any) {
+      console.error(err);
+      const msg = err.response?.data?.detail || "Failed to process request.";
+      setErrorMsg(msg);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleResetPassword = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setErrorMsg("");
+    setSuccessMsg("");
+    
+    if (!resetToken || !newPassword) {
+      setErrorMsg("Please fill in all required fields.");
+      return;
+    }
+
+    setLoading(true);
+
+    try {
+      await authApi.resetPassword(resetToken, newPassword);
+      setSuccessMsg("Password reset successfully! You can now sign in with your new password.");
+      setResetStep("request");
+      setResetToken("");
+      setNewPassword("");
+      setShowForgotPassword(false);
+    } catch (err: any) {
+      console.error(err);
+      const msg = err.response?.data?.detail || "Failed to reset password.";
       setErrorMsg(msg);
     } finally {
       setLoading(false);
@@ -99,6 +164,13 @@ export const AuthView: React.FC<AuthViewProps> = ({ onAuthSuccess }) => {
         {errorMsg && (
           <div className="p-3 rounded-xl bg-red-500/10 border border-red-500/20 text-red-300 text-xs text-center font-medium">
             {errorMsg}
+          </div>
+        )}
+
+        {/* Success Alert */}
+        {successMsg && (
+          <div className="p-3 rounded-xl bg-emerald-500/10 border border-emerald-500/20 text-emerald-300 text-xs text-center font-medium">
+            {successMsg}
           </div>
         )}
 
@@ -162,6 +234,98 @@ export const AuthView: React.FC<AuthViewProps> = ({ onAuthSuccess }) => {
             )}
           </button>
         </form>
+
+        {/* Forgot Password Link */}
+        {isLogin && !showForgotPassword && (
+          <button
+            type="button"
+            onClick={() => setShowForgotPassword(true)}
+            className="w-full text-xs text-[#c3c0ff] hover:text-white transition-colors"
+          >
+            Forgot password?
+          </button>
+        )}
+
+        {/* Forgot Password Form */}
+        {showForgotPassword && (
+          <div className="border-t border-white/10 pt-4 space-y-4">
+            <div className="flex items-center justify-between">
+              <h3 className="text-sm font-bold text-white">Reset Password</h3>
+              <button
+                type="button"
+                onClick={() => {
+                  setShowForgotPassword(false);
+                  setResetStep("request");
+                  setResetToken("");
+                  setNewPassword("");
+                  setErrorMsg("");
+                  setSuccessMsg("");
+                }}
+                className="text-xs text-[#c7c4d8] hover:text-white"
+              >
+                Cancel
+              </button>
+            </div>
+
+            {resetStep === "request" ? (
+              <form onSubmit={handleForgotPassword} className="space-y-3">
+                <div>
+                  <label className="text-xs text-[#c7c4d8] font-medium">Student Email</label>
+                  <input
+                    type="email"
+                    value={email}
+                    onChange={(e) => setEmail(e.target.value)}
+                    placeholder="alex@university.edu"
+                    className="w-full mt-1 bg-white/5 border border-white/10 rounded-xl px-4 py-2.5 text-xs text-white focus:outline-none focus:border-[#4f46e5] transition-all"
+                    required
+                  />
+                </div>
+                <button
+                  type="submit"
+                  disabled={loading}
+                  className="w-full py-2.5 bg-[#c3c0ff] text-[#131314] font-bold text-xs rounded-xl hover:brightness-110 active:scale-95 transition-all flex items-center justify-center gap-2"
+                >
+                  {loading ? (
+                    <span className="material-symbols-outlined text-sm animate-spin">progress_activity</span>
+                  ) : (
+                    <>
+                      <span>Send Reset Link</span>
+                      <span className="material-symbols-outlined text-sm">send</span>
+                    </>
+                  )}
+                </button>
+              </form>
+            ) : (
+              <form onSubmit={handleResetPassword} className="space-y-3">
+                <div>
+                  <label className="text-xs text-[#c7c4d8] font-medium">New Password</label>
+                  <input
+                    type="password"
+                    value={newPassword}
+                    onChange={(e) => setNewPassword(e.target.value)}
+                    placeholder="••••••••"
+                    className="w-full mt-1 bg-white/5 border border-white/10 rounded-xl px-4 py-2.5 text-xs text-white focus:outline-none focus:border-[#4f46e5] transition-all"
+                    required
+                  />
+                </div>
+                <button
+                  type="submit"
+                  disabled={loading}
+                  className="w-full py-2.5 bg-emerald-500 text-white font-bold text-xs rounded-xl hover:brightness-110 active:scale-95 transition-all flex items-center justify-center gap-2"
+                >
+                  {loading ? (
+                    <span className="material-symbols-outlined text-sm animate-spin">progress_activity</span>
+                  ) : (
+                    <>
+                      <span>Reset Password</span>
+                      <span className="material-symbols-outlined text-sm">check</span>
+                    </>
+                  )}
+                </button>
+              </form>
+            )}
+          </div>
+        )}
 
         <p className="text-[11px] text-[#c7c4d8] text-center opacity-70">
           Protected by JWT Token Security & Encrypted Password Hashing.
