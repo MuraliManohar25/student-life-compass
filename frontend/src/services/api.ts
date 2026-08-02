@@ -1,6 +1,6 @@
 import axios from 'axios';
 
-const API_BASE_URL = '/api';
+const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || '/api';
 
 export const apiClient = axios.create({
   baseURL: API_BASE_URL,
@@ -78,6 +78,14 @@ export const dashboardApi = {
     const res = await apiClient.get('/dashboard');
     return res.data;
   },
+  getEvents: async () => {
+    const res = await apiClient.get('/dashboard/events');
+    return res.data;
+  },
+  getFocusActivity: async () => {
+    const res = await apiClient.get('/dashboard/focus-activity');
+    return res.data;
+  },
 };
 
 // Career Mentor API
@@ -91,6 +99,18 @@ export const careerApi = {
   },
   chat: async (prompt: string) => {
     const res = await apiClient.post('/career/chat', { prompt });
+    return res.data;
+  },
+  getRoadmap: async () => {
+    const res = await apiClient.get('/career/roadmap');
+    return res.data;
+  },
+  getSkillGap: async () => {
+    const res = await apiClient.get('/career/skill-gap');
+    return res.data;
+  },
+  getResources: async () => {
+    const res = await apiClient.get('/career/resources');
     return res.data;
   },
 };

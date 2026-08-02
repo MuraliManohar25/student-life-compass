@@ -3,6 +3,10 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import RedirectResponse
 from app.core.config import settings
+
+if not settings.SECRET_KEY:
+    raise RuntimeError("SECRET_KEY environment variable must be set to start the application")
+
 from app.core.database import engine, Base, SessionLocal
 from app.seed_data import seed_database
 

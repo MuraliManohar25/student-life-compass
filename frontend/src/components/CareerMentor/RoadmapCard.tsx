@@ -1,5 +1,6 @@
-import React from "react";
+import React, { useState, useEffect } from "react";
 import { CareerRole } from "../../data/careerRoles";
+import { careerApi } from "../../services/api";
 
 interface RoadmapCardProps {
   role: CareerRole;
@@ -8,7 +9,39 @@ interface RoadmapCardProps {
 
 // RoadmapCard: Renders the step-by-step career milestone roadmap based on the active role.
 export const RoadmapCard: React.FC<RoadmapCardProps> = ({ role, knownSkills }) => {
-  // TODO: Replace roadmap milestones with dynamic backend API response from /api/career/roadmap
+  const [roadmapData, setRoadmapData] = useState<any>(null);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    const fetchRoadmap = async () => {
+      try {
+        const data = await careerApi.getRoadmap();
+        setRoadmapData(data);
+      } catch (error) {
+        console.error("Failed to fetch roadmap:", error);
+      } finally {
+        setLoading(false);
+      }
+    };
+    fetchRoadmap();
+  }, []);
+
+  if (loading) {
+    return (
+      <div className="glass-card p-6 rounded-2xl border border-white/10 space-y-4">
+        <div className="flex justify-between items-center">
+          <div className="flex items-center gap-2">
+            <span className="material-symbols-outlined text-[#c3c0ff]">map</span>
+            <h3 className="font-headline font-bold text-lg text-white">AI Career Roadmap</h3>
+          </div>
+          <span className="text-xs text-[#c7c4d8] font-semibold">{role.title} Path</span>
+        </div>
+        <div className="text-center text-[#c7c4d8] text-sm py-8">Loading roadmap...</div>
+      </div>
+    );
+  }
+
+  const roadmapItems = roadmapData?.roadmap || role.roadmapMilestones;
   return (
     <div className="glass-card p-6 rounded-2xl border border-white/10 space-y-4">
       <div className="flex justify-between items-center">
@@ -21,10 +54,10 @@ export const RoadmapCard: React.FC<RoadmapCardProps> = ({ role, knownSkills }) =
 
       {/* Roadmap Milestone Timeline */}
       <div className="space-y-3 relative before:absolute before:left-4 before:top-3 before:bottom-3 before:w-0.5 before:bg-white/10">
-        {role.roadmapMilestones.map((m, idx) => {
-          const isDone = knownSkills.includes(m.skillRequired);
+        {roadmapItems.map((m: any, idx: number) => {
+          const isDone = knownSkills.includes(m.skillRequired) || m.status === "COMPLETED";
           return (
-            <div key={m.id} className="flex items-start gap-4 relative z-10 pl-2">
+            <div key={m.id || idx} className="flex items-start gap-4 relative z-10 pl-2">
               <div
                 className={`w-6 h-6 rounded-full flex items-center justify-center text-xs font-bold shrink-0 ${
                   isDone

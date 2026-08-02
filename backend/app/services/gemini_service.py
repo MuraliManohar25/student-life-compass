@@ -5,61 +5,38 @@ class GeminiService:
         self.api_key = os.getenv("GEMINI_API_KEY", "")
 
     def analyze_career(self, target_role: str, profile_data: dict) -> dict:
-        # Structured career mentor response
-        if target_role == "AI Engineer":
-            match_index = 84.0
+        # Structured career mentor response using profile_data
+        if profile_data and "market_match_index" in profile_data:
+            match_index = profile_data.get("market_match_index", 75.0)
+        else:
+            match_index = 75.0
+
+        if profile_data and "skill_gap" in profile_data:
+            skill_gap = profile_data.get("skill_gap", [])
+        else:
             skill_gap = [
-                {"name": "Python", "score": 92, "benchmark": 90, "status": "Strong"},
-                {"name": "ML/PyTorch", "score": 88, "benchmark": 85, "status": "Strong"},
-                {"name": "Docker/MLOps", "score": 54, "benchmark": 85, "status": "Gap"},
-                {"name": "SQL/NoSQL", "score": 78, "benchmark": 80, "status": "Optimal"},
-                {"name": "Algorithms", "score": 85, "benchmark": 85, "status": "Optimal"}
+                {"name": "Python", "score": 85, "benchmark": 90, "status": "Gap"},
+                {"name": "System Design", "score": 75, "benchmark": 85, "status": "Gap"},
+                {"name": "Algorithms", "score": 80, "benchmark": 85, "status": "Gap"}
             ]
+
+        if profile_data and "roadmap" in profile_data:
+            roadmap = profile_data.get("roadmap", [])
+        else:
             roadmap = [
                 {
                     "week": 1,
-                    "title": "Advanced Python & AsyncIO",
-                    "description": "Decorators, generators, and asynchronous pipelines.",
-                    "progress": 100,
-                    "status": "COMPLETED"
-                },
-                {
-                    "week": 2,
-                    "title": "Docker & Containerization",
-                    "description": "Multi-stage builds, GPU passthrough, and docker-compose.",
-                    "progress": 68,
+                    "title": "Foundational Skills",
+                    "description": "Build core programming and system design fundamentals.",
+                    "progress": 50,
                     "status": "IN PROGRESS"
                 },
                 {
-                    "week": 3,
-                    "title": "Transformer Models & LoRA",
-                    "description": "Fine-tuning open source LLMs using HuggingFace & PEFT.",
+                    "week": 2,
+                    "title": "Advanced Topics",
+                    "description": "Deep dive into specialized areas based on target role.",
                     "progress": 0,
                     "status": "LOCKED"
-                }
-            ]
-        else:
-            match_index = 88.0
-            skill_gap = [
-                {"name": "FastAPI/Express", "score": 90, "benchmark": 85, "status": "Strong"},
-                {"name": "PostgreSQL/Redis", "score": 85, "benchmark": 80, "status": "Strong"},
-                {"name": "Kubernetes/CI-CD", "score": 60, "benchmark": 80, "status": "Gap"},
-                {"name": "System Design", "score": 82, "benchmark": 85, "status": "Optimal"}
-            ]
-            roadmap = [
-                {
-                    "week": 1,
-                    "title": "High Throughput Microservices",
-                    "description": "gRPC, REST, and distributed caching with Redis.",
-                    "progress": 100,
-                    "status": "COMPLETED"
-                },
-                {
-                    "week": 2,
-                    "title": "PostgreSQL Indexing & Optimization",
-                    "description": "EXPLAIN ANALYZE, connection pooling, and sharding.",
-                    "progress": 75,
-                    "status": "IN PROGRESS"
                 }
             ]
 
@@ -124,7 +101,7 @@ class GeminiService:
             try:
                 import google.generativeai as genai
                 genai.configure(api_key=self.api_key)
-                model = genai.GenerativeModel('gemini-3.5-flash')
+                model = genai.GenerativeModel('gemini-2.0-flash-exp')
                 ctx_str = f"Student Target Role: {target_role}. Profile Context: {profile_data if profile_data else 'Standard'}"
                 response = model.generate_content(
                     f"You are an elite AI Career Mentor for a university student. {ctx_str}\nKeep responses concise and use short bullet points where appropriate.\nPrompt: {prompt}"
@@ -148,7 +125,7 @@ class GeminiService:
             try:
                 import google.generativeai as genai
                 genai.configure(api_key=self.api_key)
-                model = genai.GenerativeModel('gemini-3.5-flash')
+                model = genai.GenerativeModel('gemini-2.0-flash-exp')
                 sys_inst = "You are Compass AI, a high-performance university student advisor. Provide concise, actionable, encouraging advice on study planning, career development, interview prep, skill building, and budget optimization."
                 res = model.generate_content(f"{sys_inst}\n\nStudent Query: {prompt}\nContext: {context}")
                 if res and res.text:

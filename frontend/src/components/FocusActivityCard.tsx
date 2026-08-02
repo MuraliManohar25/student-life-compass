@@ -1,14 +1,39 @@
-import React from "react";
+import React, { useState, useEffect } from "react";
+import { dashboardApi } from "../services/api";
 
 // Focus Activity Card: Displays current month study focus summary metrics.
 // Designed for quick visual inspection without complex heatmaps.
 export const FocusActivityCard: React.FC = () => {
-  // TODO: Replace mock focus data with backend API call GET /api/dashboard/focus-activity
-  const currentMonth = new Date().toLocaleString("default", { month: "long", year: "numeric" });
-  const totalHours = 68;
-  const targetHours = 80;
-  const dailyAvg = "2.5 hrs/day";
-  const productiveDay = "Thursday";
+  const [focusData, setFocusData] = useState<any>(null);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    const fetchFocusActivity = async () => {
+      try {
+        const data = await dashboardApi.getFocusActivity();
+        setFocusData(data);
+      } catch (error) {
+        console.error("Failed to fetch focus activity:", error);
+      } finally {
+        setLoading(false);
+      }
+    };
+    fetchFocusActivity();
+  }, []);
+
+  if (loading) {
+    return (
+      <div className="glass-card p-6 rounded-2xl border border-white/10 space-y-5">
+        <div className="text-center text-[#c7c4d8] text-sm py-8">Loading focus activity...</div>
+      </div>
+    );
+  }
+
+  const currentMonth = focusData?.current_month || new Date().toLocaleString("default", { month: "long", year: "numeric" });
+  const totalHours = focusData?.total_hours || 68;
+  const targetHours = focusData?.target_hours || 80;
+  const dailyAvg = focusData?.daily_avg || "2.5 hrs/day";
+  const productiveDay = focusData?.productive_day || "Thursday";
   const progressPercent = Math.round((totalHours / targetHours) * 100);
 
   return (

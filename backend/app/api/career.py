@@ -44,3 +44,53 @@ def career_chat(
     }
     reply = gemini_service.chat_dialogue(req.prompt, target_role, profile_data=profile_dict)
     return {"reply": reply, "source": "gemini-ai"}
+
+@router.get("/roadmap")
+def get_career_roadmap(
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db)
+):
+    profile = db.query(Profile).filter(Profile.user_id == current_user.id).first()
+    target_role = profile.target_role if (profile and profile.target_role) else "AI Engineer"
+    profile_dict = {
+        "market_match_index": profile.market_match_index if profile else 0.0,
+        "skill_gap": [],
+        "roadmap": []
+    }
+    result = gemini_service.analyze_career(target_role, profile_dict)
+    return result
+
+@router.get("/skill-gap")
+def get_skill_gap(
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db)
+):
+    profile = db.query(Profile).filter(Profile.user_id == current_user.id).first()
+    target_role = profile.target_role if (profile and profile.target_role) else "AI Engineer"
+    profile_dict = {
+        "market_match_index": profile.market_match_index if profile else 0.0,
+        "skill_gap": [],
+        "roadmap": []
+    }
+    result = gemini_service.analyze_career(target_role, profile_dict)
+    return {
+        "readiness_score": result.get("market_match_index", 75.0),
+        "skill_gap": result.get("skill_gap", [])
+    }
+
+@router.get("/resources")
+def get_learning_resources(
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db)
+):
+    profile = db.query(Profile).filter(Profile.user_id == current_user.id).first()
+    target_role = profile.target_role if (profile and profile.target_role) else "AI Engineer"
+    profile_dict = {
+        "market_match_index": profile.market_match_index if profile else 0.0,
+        "skill_gap": [],
+        "roadmap": []
+    }
+    result = gemini_service.analyze_career(target_role, profile_dict)
+    return {
+        "resources": result.get("resources", [])
+    }
