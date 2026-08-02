@@ -1,13 +1,21 @@
 import React, { useState } from "react";
-import { MissionTask } from "../types";
+import { Task } from "../services/taskEngine";
 
 interface TodayMissionCardProps {
-  tasks: MissionTask[];
+  tasks: Task[];
   toggleTask: (id: string) => void;
   addTask: (title: string) => void;
+  onOpenStudyPlanner?: () => void;
+  onOpenAskAi?: () => void;
 }
 
-export const TodayMissionCard: React.FC<TodayMissionCardProps> = ({ tasks, toggleTask, addTask }) => {
+export const TodayMissionCard: React.FC<TodayMissionCardProps> = ({
+  tasks,
+  toggleTask,
+  addTask,
+  onOpenStudyPlanner,
+  onOpenAskAi,
+}) => {
   const [showAddTask, setShowAddTask] = useState(false);
   const [newTaskTitle, setNewTaskTitle] = useState("");
 
@@ -29,7 +37,9 @@ export const TodayMissionCard: React.FC<TodayMissionCardProps> = ({ tasks, toggl
           <h3 className="font-headline font-bold text-lg text-white">Today's Mission</h3>
         </div>
         <div className="flex items-center gap-2">
-          <span className="text-xs text-[#c7c4d8]">{completedCount}/{tasks.length} Done</span>
+          {tasks.length > 0 && (
+            <span className="text-xs text-[#c7c4d8]">{completedCount}/{tasks.length} Done</span>
+          )}
           <button onClick={() => setShowAddTask(!showAddTask)} className="p-1 rounded-lg bg-white/5 hover:bg-white/10 text-[#c3c0ff]">
             <span className="material-symbols-outlined text-sm">add</span>
           </button>
@@ -49,24 +59,54 @@ export const TodayMissionCard: React.FC<TodayMissionCardProps> = ({ tasks, toggl
           </button>
         </form>
       )}
-      <div className="space-y-2 max-h-40 overflow-y-auto pr-1">
-        {tasks.map((t) => (
-          <div
-            key={t.id}
-            onClick={() => toggleTask(t.id)}
-            className={`p-2.5 rounded-xl border transition-all cursor-pointer flex items-center justify-between ${
-              t.completed ? "bg-white/[0.02] border-white/5 text-[#c7c4d8]/60 line-through" : "bg-white/5 border-white/10 text-white"
-            }`}
-          >
-            <div className="flex items-center gap-2 text-xs">
-              <div className={`w-4 h-4 rounded border flex items-center justify-center ${t.completed ? "bg-[#4f46e5] border-[#4f46e5] text-white" : "border-white/30"}`}>
-                {t.completed && <span className="material-symbols-outlined text-[10px]">check</span>}
-              </div>
-              <span className="truncate">{t.title}</span>
-            </div>
+      {tasks.length === 0 ? (
+        <div className="py-6 text-center space-y-3">
+          <p className="text-xs text-[#c7c4d8]">No tasks scheduled for today.</p>
+          <div className="flex flex-wrap justify-center gap-2">
+            <button
+              onClick={() => setShowAddTask(true)}
+              className="px-3 py-1.5 rounded-lg bg-[#4f46e5] text-white text-xs font-bold hover:brightness-110"
+            >
+              Create Task
+            </button>
+            {onOpenAskAi && (
+              <button
+                onClick={onOpenAskAi}
+                className="px-3 py-1.5 rounded-lg bg-white/5 border border-white/10 text-[#c3c0ff] text-xs font-bold hover:bg-white/10"
+              >
+                Generate AI Study Plan
+              </button>
+            )}
+            {onOpenStudyPlanner && (
+              <button
+                onClick={onOpenStudyPlanner}
+                className="px-3 py-1.5 rounded-lg bg-white/5 border border-white/10 text-[#c3c0ff] text-xs font-bold hover:bg-white/10"
+              >
+                Open Study Planner
+              </button>
+            )}
           </div>
-        ))}
-      </div>
+        </div>
+      ) : (
+        <div className="space-y-2 max-h-40 overflow-y-auto pr-1">
+          {tasks.map((t) => (
+            <div
+              key={t.id}
+              onClick={() => toggleTask(t.id)}
+              className={`p-2.5 rounded-xl border transition-all cursor-pointer flex items-center justify-between ${
+                t.completed ? "bg-white/[0.02] border-white/5 text-[#c7c4d8]/60 line-through" : "bg-white/5 border-white/10 text-white"
+              }`}
+            >
+              <div className="flex items-center gap-2 text-xs">
+                <div className={`w-4 h-4 rounded border flex items-center justify-center ${t.completed ? "bg-[#4f46e5] border-[#4f46e5] text-white" : "border-white/30"}`}>
+                  {t.completed && <span className="material-symbols-outlined text-[10px]">check</span>}
+                </div>
+                <span className="truncate">{t.title}</span>
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
     </div>
   );
 };

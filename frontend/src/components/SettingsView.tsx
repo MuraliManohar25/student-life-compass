@@ -141,7 +141,7 @@ export const SettingsView: React.FC = () => {
             <p className="text-[11px] text-emerald-400 mt-0.5">Persisted across sessions</p>
           </div>
         </div>
-        <button id="clear-local-data-btn" onClick={() => { localStorage.removeItem("compass_tasks"); localStorage.removeItem("compass_timeline_events"); window.location.reload(); }} className="px-4 py-2 rounded-xl bg-white/5 border border-white/10 text-xs text-[#c7c4d8] hover:text-white hover:bg-white/10 transition-all">
+        <button id="clear-local-data-btn" onClick={() => { localStorage.removeItem("compass_task_engine_v1"); localStorage.removeItem("compass_performance_metrics_v1"); localStorage.removeItem("compass_study_planner_v3"); localStorage.removeItem("compass_performance_engine_v4"); localStorage.removeItem("compass_tasks"); localStorage.removeItem("compass_timeline_events"); window.location.reload(); }} className="px-4 py-2 rounded-xl bg-white/5 border border-white/10 text-xs text-[#c7c4d8] hover:text-white hover:bg-white/10 transition-all">
           Clear Tasks &amp; Events (reload to defaults)
         </button>
       </div>

@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from "react";
-import { NavTab, MissionTask, TimelineEvent } from "../types";
+import { NavTab, TimelineEvent } from "../types";
 import { dashboardApi } from "../services/api";
 import { useAppData } from "../context/AppDataContext";
 import { DashboardHeader } from "./DashboardHeader";
@@ -13,15 +13,7 @@ interface DashboardViewProps {
   onOpenAskAi: () => void;
 }
 
-const LS_TASKS_KEY = "compass_tasks";
 const LS_EVENTS_KEY = "compass_timeline_events";
-
-const DEFAULT_TASKS: MissionTask[] = [
-  { id: "1", title: "Complete DBMS Lab Assignment 4", completed: false, category: "Academic" },
-  { id: "2", title: "Solve 2 DSA Problems on LeetCode", completed: true, category: "Career" },
-  { id: "3", title: "Keep daily hostel spend below ₹150", completed: false, category: "Budget" },
-  { id: "4", title: "Submit application for Stripe Intern", completed: true, category: "Career" },
-];
 
 const DEFAULT_EVENTS: TimelineEvent[] = [
   { id: "e1", title: "Operating Systems Mid-Term", location: "Hall 302 • 10:00 AM", dueText: "In 2 Days", badgeColor: "error" },
@@ -30,12 +22,8 @@ const DEFAULT_EVENTS: TimelineEvent[] = [
 ];
 
 export const DashboardView: React.FC<DashboardViewProps> = ({ setActiveTab, onOpenAskAi }) => {
-  const { budgetSummary, intelligenceScore, scoreTrend, profile, isLoading } = useAppData();
+  const { budgetSummary, intelligenceScore, scoreTrend, profile, isLoading, todayTasks, toggleTask, addTask } = useAppData();
 
-  const [tasks, setTasks] = useState<MissionTask[]>(() => {
-    try { const saved = localStorage.getItem(LS_TASKS_KEY); return saved ? JSON.parse(saved) : DEFAULT_TASKS; }
-    catch { return DEFAULT_TASKS; }
-  });
   const [timelineEvents, setTimelineEvents] = useState<TimelineEvent[]>(() => {
     try { const saved = localStorage.getItem(LS_EVENTS_KEY); return saved ? JSON.parse(saved) : DEFAULT_EVENTS; }
     catch { return DEFAULT_EVENTS; }
@@ -49,17 +37,25 @@ export const DashboardView: React.FC<DashboardViewProps> = ({ setActiveTab, onOp
     async function loadDashboardExtras() {
       try {
         const data = await dashboardApi.getDashboard();
-        if (data.tasks?.length && !localStorage.getItem(LS_TASKS_KEY)) setTasks(data.tasks);
         if (data.timeline_events?.length && !localStorage.getItem(LS_EVENTS_KEY)) setTimelineEvents(data.timeline_events);
-      } catch (err) { console.warn("Using fallback state for Dashboard tasks/events:", err); }
+      } catch (err) { console.warn("Using fallback state for Dashboard events:", err); }
     }
     loadDashboardExtras();
   }, []);
 
-  useEffect(() => { localStorage.setItem(LS_TASKS_KEY, JSON.stringify(tasks)); }, [tasks]);
-
-  const toggleTask = (id: string) => setTasks((prev) => prev.map((t) => (t.id === id ? { ...t, completed: !t.completed } : t)));
-  const addTask = (title: string) => setTasks((prev) => [...prev, { id: Date.now().toString(), title, completed: false, category: "Custom" }]);
+  const handleAddTask = (title: string) => {
+    const today = new Date().toISOString().split("T")[0];
+    addTask({
+      title,
+      description: "",
+      category: "Custom",
+      assignedDate: today,
+      dueDate: today,
+      priority: "Medium",
+      estimatedDuration: "30 mins",
+      source: "user",
+    });
+  };
 
   return (
     <div className="min-h-screen pt-20 pb-12 px-4 md:px-8 max-w-7xl mx-auto space-y-8">
@@ -105,7 +101,13 @@ export const DashboardView: React.FC<DashboardViewProps> = ({ setActiveTab, onOp
           </div>
         </div>
 
-        <TodayMissionCard tasks={tasks} toggleTask={toggleTask} addTask={addTask} />
+        <TodayMissionCard
+          tasks={todayTasks}
+          toggleTask={toggleTask}
+          addTask={handleAddTask}
+          onOpenStudyPlanner={() => setActiveTab("study-planner")}
+          onOpenAskAi={onOpenAskAi}
+        />
 
         <div onClick={() => setActiveTab("budget")} className="glass-card-interactive p-6 rounded-2xl border border-white/10 space-y-4 cursor-pointer">
           <div className="flex justify-between items-center">

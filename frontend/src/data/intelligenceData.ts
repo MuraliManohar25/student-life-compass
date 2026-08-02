@@ -100,25 +100,5 @@ export const AI_MENTOR_SUMMARY = {
   ],
 };
 
-// AI Recommendations
-export const AI_RECOMMENDATIONS = [
-  "Complete 2 DSA problems today",
-  "Improve attendance to above 85%",
-  "Limit unnecessary spending this week",
-  "Practice aptitude for placements",
-  "Spend at least 30 minutes revising DBMS",
-];
-
-// Today's Personalized Action Plan
-export const TODAY_ACTION_PLAN = {
-  title: "Today's Personalized Action Plan",
-  estimatedTime: "3 hrs 20 mins",
-  priority: "High",
-  tasks: [
-    { id: "1", task: "Complete DBMS Assignment", completed: false, category: "Academic" },
-    { id: "2", task: "Solve 2 DSA Problems", completed: true, category: "Practice" },
-    { id: "3", task: "Watch one Machine Learning lecture", completed: false, category: "Study" },
-    { id: "4", task: "Gym", completed: false, category: "Personal" },
-    { id: "5", task: "Sleep before 11 PM", completed: false, category: "Wellness" },
-  ],
-};
+// AI Recommendations (dynamic — no hardcoded task list)
+export const AI_RECOMMENDATIONS: string[] = [];

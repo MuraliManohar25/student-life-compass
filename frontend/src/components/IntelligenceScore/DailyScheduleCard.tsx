@@ -5,6 +5,7 @@ interface DailyScheduleCardProps {
   tasks: ActionTask[];
   planGeneratedTime: string;
   onToggleTask: (taskId: string) => void;
+  onOpenStudyPlanner?: () => void;
 }
 
 // Professional AI Task Timeline Component (Redesigned Today's Personalized Action Plan)
@@ -12,6 +13,7 @@ export const DailyScheduleCard: React.FC<DailyScheduleCardProps> = ({
   tasks,
   planGeneratedTime,
   onToggleTask,
+  onOpenStudyPlanner,
 }) => {
   const [expandedHistory, setExpandedHistory] = useState<Record<string, boolean>>({});
 
@@ -119,7 +121,26 @@ export const DailyScheduleCard: React.FC<DailyScheduleCardProps> = ({
         </div>
       </div>
 
-      {/* 2. ALL COMPLETED CONGRATULATIONS EMPTY STATE */}
+      {/* 2. NO TASKS EMPTY STATE */}
+      {totalCount === 0 && (
+        <div className="p-8 rounded-3xl bg-white/5 border border-white/10 text-center space-y-4">
+          <span className="material-symbols-outlined text-4xl text-[#c3c0ff]">event_available</span>
+          <h3 className="font-headline font-bold text-lg text-white">No tasks scheduled for today.</h3>
+          <p className="text-xs text-[#c7c4d8] max-w-md mx-auto">
+            Create a study schedule, add an assignment, or generate an AI study plan to populate your action plan.
+          </p>
+          {onOpenStudyPlanner && (
+            <button
+              onClick={onOpenStudyPlanner}
+              className="px-4 py-2 rounded-xl bg-[#4f46e5] text-white text-xs font-bold hover:brightness-110"
+            >
+              Open Study Planner
+            </button>
+          )}
+        </div>
+      )}
+
+      {/* 3. ALL COMPLETED CONGRATULATIONS STATE */}
       {isAllCompleted && (
         <div className="p-8 rounded-3xl bg-gradient-to-r from-emerald-500/20 via-teal-500/10 to-emerald-500/20 border border-emerald-500/30 text-center space-y-3 shadow-xl animate-fade-in">
           <div className="text-4xl">🎉</div>

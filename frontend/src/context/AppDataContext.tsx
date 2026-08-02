@@ -18,6 +18,7 @@ import {
   RiskAnalysisEngine,
 } from "../services/riskAnalysisEngine";
 import { LocalDiscoveryEngine } from "../services/localDiscoveryEngine";
+import { Task, TaskEngine } from "../services/taskEngine";
 
 const NEARBY_SUMMARY_KEY = "compass_nearby_summary";
 
@@ -45,11 +46,16 @@ interface AppDataContextValue {
   intelligenceScore: number | null;
   scoreTrend: string | null;
   nearbyPlacesSummary: NearbyPlacesSummary;
+  todayTasks: Task[];
+  planGeneratedTime: string | null;
   isLoading: boolean;
   refreshBudget: () => void;
   refreshRisk: () => void;
   refreshProfile: () => Promise<void>;
   refreshNearbyPlaces: () => void;
+  refreshTasks: () => void;
+  toggleTask: (id: string) => void;
+  addTask: (input: Omit<Task, "id" | "completed" | "completedAt" | "rolloverCount">) => Task;
   recordNearbySearch: (location: string, discoveredCount: number) => void;
 }
 
@@ -92,7 +98,34 @@ export function AppDataProvider({ children }: { children: React.ReactNode }) {
   const [scoreTrend, setScoreTrend] = useState<string | null>(null);
   const [nearbyPlacesSummary, setNearbyPlacesSummary] =
     useState<NearbyPlacesSummary>(defaultNearbySummary);
+  const [todayTasks, setTodayTasks] = useState<Task[]>([]);
+  const [planGeneratedTime, setPlanGeneratedTime] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(true);
+
+  const refreshTasks = useCallback(() => {
+    setTodayTasks(TaskEngine.getTodayTasks());
+    setPlanGeneratedTime(TaskEngine.getPlanGeneratedTime());
+    setIntelligenceScore(PerformanceEngine.getOverallScore());
+    setScoreTrend(computeScoreTrend());
+  }, []);
+
+  const toggleTask = useCallback(
+    (id: string) => {
+      PerformanceEngine.toggleTask(id);
+      refreshTasks();
+      refreshBudget();
+    },
+    [refreshTasks, refreshBudget]
+  );
+
+  const addTask = useCallback(
+    (input: Omit<Task, "id" | "completed" | "completedAt" | "rolloverCount">) => {
+      const created = TaskEngine.addTask(input);
+      refreshTasks();
+      return created;
+    },
+    [refreshTasks]
+  );
 
   const refreshBudget = useCallback(() => {
     const monthKey = getCurrentMonthKey();
@@ -141,6 +174,11 @@ export function AppDataProvider({ children }: { children: React.ReactNode }) {
   }, []);
 
   useEffect(() => {
+    refreshTasks();
+    return TaskEngine.subscribe(refreshTasks);
+  }, [refreshTasks]);
+
+  useEffect(() => {
     let cancelled = false;
 
     async function bootstrap() {
@@ -148,6 +186,7 @@ export function AppDataProvider({ children }: { children: React.ReactNode }) {
       refreshBudget();
       refreshRisk();
       refreshNearbyPlaces();
+      refreshTasks();
       await refreshProfile();
       if (!cancelled) setIsLoading(false);
     }
@@ -156,7 +195,7 @@ export function AppDataProvider({ children }: { children: React.ReactNode }) {
     return () => {
       cancelled = true;
     };
-  }, [refreshBudget, refreshRisk, refreshProfile, refreshNearbyPlaces]);
+  }, [refreshBudget, refreshRisk, refreshProfile, refreshNearbyPlaces, refreshTasks]);
 
   const value = useMemo<AppDataContextValue>(
     () => ({
@@ -166,11 +205,16 @@ export function AppDataProvider({ children }: { children: React.ReactNode }) {
       intelligenceScore,
       scoreTrend,
       nearbyPlacesSummary,
+      todayTasks,
+      planGeneratedTime,
       isLoading,
       refreshBudget,
       refreshRisk,
       refreshProfile,
       refreshNearbyPlaces,
+      refreshTasks,
+      toggleTask,
+      addTask,
       recordNearbySearch,
     }),
     [
@@ -180,11 +224,16 @@ export function AppDataProvider({ children }: { children: React.ReactNode }) {
       intelligenceScore,
       scoreTrend,
       nearbyPlacesSummary,
+      todayTasks,
+      planGeneratedTime,
       isLoading,
       refreshBudget,
       refreshRisk,
       refreshProfile,
       refreshNearbyPlaces,
+      refreshTasks,
+      toggleTask,
+      addTask,
       recordNearbySearch,
     ]
   );

@@ -1,10 +1,12 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useCallback } from "react";
 import {
   StudyPlannerEngine,
   StudyTask,
   DayScheduleSummary,
   StudyStats,
 } from "../services/studyPlannerEngine";
+import { TaskEngine } from "../services/taskEngine";
+import { useAppData } from "../context/AppDataContext";
 import { TaskEditModal } from "./StudyPlanner/TaskEditModal";
 import { CalendarView } from "./StudyPlanner/CalendarView";
 import { studyApi } from "../services/api";
@@ -16,6 +18,7 @@ const addDaysIso = (days: number): string => {
 };
 
 export const StudyPlannerView: React.FC = () => {
+  const { refreshTasks, toggleTask: contextToggleTask } = useAppData();
   const [activeTab, setActiveTab] = useState<"Today" | "Tomorrow" | "This Week">("Today");
   const [viewMode, setViewMode] = useState<"Timeline" | "Calendar">("Timeline");
 
@@ -29,13 +32,13 @@ export const StudyPlannerView: React.FC = () => {
   const [tomorrowTasks, setTomorrowTasks] = useState<StudyTask[]>([]);
   const [weekSummaries, setWeekSummaries] = useState<DayScheduleSummary[]>([]);
   const [stats, setStats] = useState<StudyStats>({
-    todayStudyHours: 4.5,
-    weekStudyHours: 22.5,
-    completedTasks: 8,
-    pendingTasks: 4,
-    currentStreak: 5,
-    longestStreak: 12,
-    focusTimeMinutes: 145,
+    todayStudyHours: 0,
+    weekStudyHours: 0,
+    completedTasks: 0,
+    pendingTasks: 0,
+    currentStreak: 0,
+    longestStreak: 0,
+    focusTimeMinutes: 0,
   });
 
   // Expandable week days state
@@ -49,15 +52,19 @@ export const StudyPlannerView: React.FC = () => {
   // Live Time
   const [currentTimeStr, setCurrentTimeStr] = useState<string>("");
 
-  const refreshData = () => {
+  const refreshData = useCallback(() => {
     setTodayTasks(StudyPlannerEngine.getTodaySchedule());
     setTomorrowTasks(StudyPlannerEngine.getTomorrowSchedule());
     setWeekSummaries(StudyPlannerEngine.getThisWeekSchedule());
     setStats(StudyPlannerEngine.getStats());
-  };
+  }, []);
 
   useEffect(() => {
     refreshData();
+    return TaskEngine.subscribe(refreshData);
+  }, [refreshData]);
+
+  useEffect(() => {
     const updateTime = () => {
       setCurrentTimeStr(
         new Date().toLocaleTimeString([], { hour: "numeric", minute: "2-digit", second: "2-digit", hour12: true })
@@ -93,11 +100,12 @@ export const StudyPlannerView: React.FC = () => {
     setTimerActive(!timerActive);
   };
 
-  // Toggle Task Completion & Sync with Performance Report
+  // Toggle Task Completion — synced via shared TaskEngine
   const handleToggleComplete = (id: string, e?: React.MouseEvent) => {
     if (e) e.stopPropagation();
-    StudyPlannerEngine.toggleTaskCompletion(id);
+    contextToggleTask(id);
     refreshData();
+    refreshTasks();
   };
 
   // Delete Task
@@ -105,6 +113,7 @@ export const StudyPlannerView: React.FC = () => {
     if (e) e.stopPropagation();
     StudyPlannerEngine.deleteTask(id);
     refreshData();
+    refreshTasks();
   };
 
   // Duplicate Task
@@ -112,6 +121,7 @@ export const StudyPlannerView: React.FC = () => {
     if (e) e.stopPropagation();
     StudyPlannerEngine.duplicateTask(id);
     refreshData();
+    refreshTasks();
   };
 
   // Move Task to Date
@@ -119,6 +129,7 @@ export const StudyPlannerView: React.FC = () => {
     if (e) e.stopPropagation();
     StudyPlannerEngine.updateTask(id, { date: newDateIso, status: "Rolled Over", priority: "High" });
     refreshData();
+    refreshTasks();
   };
 
   // Edit Task
@@ -142,6 +153,7 @@ export const StudyPlannerView: React.FC = () => {
       StudyPlannerEngine.addTask(data);
     }
     refreshData();
+    refreshTasks();
   };
 
   const toggleWeekDayAccordion = (isoDate: string) => {
@@ -436,7 +448,18 @@ export const StudyPlannerView: React.FC = () => {
                 </div>
 
                 <div className="space-y-3.5">
-                  {todayTasks.map((slot) => {
+                  {todayTasks.length === 0 ? (
+                    <div className="py-10 text-center space-y-3">
+                      <p className="text-xs text-[#c7c4d8]">No tasks scheduled for today.</p>
+                      <button
+                        onClick={() => handleOpenAdd()}
+                        className="px-4 py-2 rounded-xl bg-[#4f46e5] text-white text-xs font-bold hover:brightness-110"
+                      >
+                        Create Task
+                      </button>
+                    </div>
+                  ) : (
+                  todayTasks.map((slot) => {
                     const isDone = slot.status === "Completed";
 
                     return (
@@ -514,7 +537,8 @@ export const StudyPlannerView: React.FC = () => {
                         </div>
                       </div>
                     );
-                  })}
+                  })
+                  )}
                 </div>
               </div>
             </div>
