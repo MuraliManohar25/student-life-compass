@@ -29,6 +29,7 @@ export interface NearbyPlacesStoreState {
   loadingPlaces: boolean;
   selectedPlaceId: string | null;
   lastFetchedTimestamp: number;
+  placesError: boolean;
 }
 
 type Listener = () => void;
@@ -47,6 +48,7 @@ class NearbyPlacesStore {
     loadingPlaces: false,
     selectedPlaceId: null,
     lastFetchedTimestamp: 0,
+    placesError: false,
   };
 
   private listeners: Set<Listener> = new Set();
@@ -153,6 +155,7 @@ class NearbyPlacesStore {
 
   public async loadPlacesForLocation(loc: Coordinates, addressLabel?: string) {
     this.state.loadingPlaces = true;
+    this.state.placesError = false;
     this.notify();
 
     try {
@@ -163,6 +166,7 @@ class NearbyPlacesStore {
       this.state.rawPlaces = fetched;
       this.state.evaluatedPlaces = evaluated;
       this.state.lastFetchedTimestamp = Date.now();
+      this.state.placesError = fetched.length === 0;
 
       // If user had searched, record in localStorage
       try {
@@ -175,9 +179,16 @@ class NearbyPlacesStore {
       } catch {}
     } catch (err) {
       console.warn("Failed to load places in store:", err);
+      this.state.placesError = true;
     } finally {
       this.state.loadingPlaces = false;
       this.notify();
+    }
+  }
+
+  public retryLoadPlaces() {
+    if (this.state.userLocation) {
+      this.loadPlacesForLocation(this.state.userLocation, this.state.locationAddress);
     }
   }
 
