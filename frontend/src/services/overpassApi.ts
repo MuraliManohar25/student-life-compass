@@ -203,8 +203,8 @@ export const fetchRealNearbyPlaces = async (userLoc: Coordinates): Promise<RealP
     out body 50;
   `;
 
-  try {
-    const res = await fetch("https://overpass-api.de/api/interpreter", {
+  const fetchFromOverpass = async (url: string): Promise<RealPlace[]> => {
+    const res = await fetch(url, {
       method: "POST",
       headers: { "Content-Type": "application/x-www-form-urlencoded" },
       body: `data=${encodeURIComponent(query)}`,
@@ -292,44 +292,17 @@ export const fetchRealNearbyPlaces = async (userLoc: Coordinates): Promise<RealP
     });
 
     return parsedPlaces.sort((a, b) => a.distanceMeters - b.distanceMeters);
-  } catch (err) {
-    console.warn("Overpass API fallback, building real geographic points around GPS:", err);
-    return generateGeographicFallbackPlaces(userLoc);
+  };
+
+  try {
+    return await fetchFromOverpass("https://overpass-api.de/api/interpreter");
+  } catch (primaryErr) {
+    console.warn("Primary Overpass API failed, trying alternate mirror:", primaryErr);
+    try {
+      return await fetchFromOverpass("https://overpass.kumi.systems/api/interpreter");
+    } catch (alternateErr) {
+      console.warn("Alternate Overpass API also failed:", alternateErr);
+      return [];
+    }
   }
-};
-
-// Fallback generator if network/Overpass API times out
-const generateGeographicFallbackPlaces = (userLoc: Coordinates): RealPlace[] => {
-  const [lat, lon] = userLoc;
-  const offsets = [
-    { name: "Student Cafe & Library", cat: "Cafe" as const, dLat: 0.003, dLon: 0.002, cost: 120, rating: 4.6, wifi: true, access: "Public Library" as const, fee: "Free Entry" },
-    { name: "College Canteen", cat: "Fast Food" as const, dLat: -0.002, dLon: 0.001, cost: 60, rating: 4.5, wifi: false, fee: "Entry fee not available." },
-    { name: "Campus Central Library", cat: "Library" as const, dLat: 0.004, dLon: -0.003, cost: 0, rating: 4.8, wifi: true, access: "University Library" as const, fee: "Free Entry" },
-    { name: "City Medical & Pharmacy", cat: "Medical Store" as const, dLat: -0.004, dLon: -0.002, cost: 150, rating: 4.7, wifi: false, fee: "Entry fee not available." },
-    { name: "Hostel Fitness Gym", cat: "Gym" as const, dLat: 0.005, dLon: 0.004, cost: 200, rating: 4.4, wifi: true, fee: "Membership Required" },
-    { name: "Stationery & Book Store", cat: "Stationery" as const, dLat: -0.001, dLon: 0.003, cost: 80, rating: 4.3, wifi: false, fee: "Free Entry" },
-    { name: "Premium Fine Dining Restaurant", cat: "Restaurant" as const, dLat: 0.008, dLon: 0.006, cost: 650, rating: 4.8, wifi: true, fee: "Entry fee not available." },
-    { name: "Campus Bus Stop", cat: "Bus Stop" as const, dLat: 0.001, dLon: -0.001, cost: 20, rating: 4.2, wifi: false, fee: "Free Entry" },
-  ];
-
-  return offsets.map((item, idx) => {
-    const placeLoc: Coordinates = [lat + item.dLat, lon + item.dLon];
-    const distanceMeters = calculateDistanceMeters(userLoc, placeLoc);
-    return {
-      id: `geo-${idx}`,
-      name: item.name,
-      category: item.cat,
-      coordinates: placeLoc,
-      address: "Campus Vicinity",
-      distanceMeters,
-      walkingTimeMins: Math.max(1, Math.round(distanceMeters / 80)),
-      estimatedCost: item.cost,
-      rating: item.rating,
-      hasWifi: item.wifi,
-      isStudentFriendly: item.cost <= 150 || item.cat === "Library",
-      libraryAccess: item.access || "Access information unavailable.",
-      entryFeeText: item.fee || "Entry fee not available.",
-      tags: {},
-    };
-  });
 };

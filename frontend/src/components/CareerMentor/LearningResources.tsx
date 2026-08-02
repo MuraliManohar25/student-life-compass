@@ -1,5 +1,5 @@
-import React from "react";
-import { CuratedResource, SKILL_RESOURCES } from "../../data/resources";
+import React, { useState, useEffect } from "react";
+import { careerApi } from "../../services/api";
 
 interface LearningResourcesProps {
   missingSkills: string[];
@@ -7,12 +7,32 @@ interface LearningResourcesProps {
 
 // LearningResources: Renders curated courses, documentation, and practice links targeting missing skills.
 export const LearningResources: React.FC<LearningResourcesProps> = ({ missingSkills }) => {
-  // Gather resources mapped to missing skills
-  const matchedResources: CuratedResource[] = missingSkills.flatMap(
-    (skill) => SKILL_RESOURCES[skill] || []
-  );
+  const [resourcesData, setResourcesData] = useState<any>(null);
+  const [loading, setLoading] = useState(true);
 
-  // TODO: Replace mock resource lookup with GET /api/career/resources backend endpoint
+  useEffect(() => {
+    const fetchResources = async () => {
+      try {
+        const data = await careerApi.getResources();
+        setResourcesData(data);
+      } catch (error) {
+        console.error("Failed to fetch resources:", error);
+      } finally {
+        setLoading(false);
+      }
+    };
+    fetchResources();
+  }, []);
+
+  if (loading) {
+    return (
+      <div className="glass-card p-6 rounded-2xl border border-white/10 space-y-4">
+        <div className="text-center text-[#c7c4d8] text-sm py-8">Loading learning resources...</div>
+      </div>
+    );
+  }
+
+  const resources = resourcesData?.resources || [];
   return (
     <div className="glass-card p-6 rounded-2xl border border-white/10 space-y-4">
       <div className="flex justify-between items-center">
@@ -25,9 +45,9 @@ export const LearningResources: React.FC<LearningResourcesProps> = ({ missingSki
         </span>
       </div>
 
-      {matchedResources.length > 0 ? (
+      {resources.length > 0 ? (
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-          {matchedResources.map((res) => (
+          {resources.map((res: any) => (
             <a
               key={res.id}
               href={res.link}
@@ -36,13 +56,13 @@ export const LearningResources: React.FC<LearningResourcesProps> = ({ missingSki
               className="p-4 rounded-xl bg-white/5 border border-white/10 hover:border-cyan-500/40 transition-all flex justify-between items-start group"
             >
               <div className="space-y-1 min-w-0 pr-2">
-                <span className="text-[10px] font-bold px-2 py-0.5 rounded bg-cyan-500/20 text-cyan-300">
-                  Target: {res.skill}
+                <span className={`text-[10px] font-bold px-2 py-0.5 rounded ${res.typeBg || "bg-cyan-500/20 text-cyan-300"}`}>
+                  {res.type}
                 </span>
                 <h4 className="font-bold text-xs text-white group-hover:text-cyan-300 transition-colors truncate">
                   {res.title}
                 </h4>
-                <p className="text-[11px] text-[#c7c4d8]">{res.platform} • {res.duration}</p>
+                <p className="text-[11px] text-[#c7c4d8]">{res.meta}</p>
               </div>
               <span className="material-symbols-outlined text-sm text-[#c7c4d8] group-hover:translate-x-1 transition-transform shrink-0">
                 open_in_new

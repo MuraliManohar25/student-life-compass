@@ -3,12 +3,16 @@ from fastapi import Depends, FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import RedirectResponse
 from sqlalchemy.orm import Session
+
 from app.core.config import settings
 from app.core.database import engine, Base, SessionLocal, get_db
 from app.core.security import get_current_user
 from app.models.models import User
 from app.seed_data import seed_database
 from app.schemas.schemas import ProfileOut
+
+if not settings.SECRET_KEY:
+    raise RuntimeError("SECRET_KEY environment variable must be set to start the application")
 
 # API Routers
 from app.api.auth import router as auth_router

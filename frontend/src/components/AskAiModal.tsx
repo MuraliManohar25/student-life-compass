@@ -25,7 +25,7 @@ export const AskAiModal: React.FC<AskAiModalProps> = ({
     return [
       {
         sender: "ai",
-        text: "Hello Murali! I'm Compass AI, your personal academic advisor. How can I assist your study goals or career path today?",
+        text: "Hello! I'm Compass AI, your personal academic advisor. How can I assist your study goals or career path today?",
       },
     ];
   });

@@ -87,3 +87,30 @@ def get_dashboard(
         "rhythm_activity": rhythm_activity,
         "ai_actions": ai_actions
     }
+
+@router.get("/events")
+def get_dashboard_events(
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db)
+):
+    timeline_events = [
+        {"id": "e1", "title": "Operating Systems Mid-Term", "location": "Hall 302 • 10:00 AM", "dueText": "In 2 Days", "badgeColor": "error"},
+        {"id": "e2", "title": "TechFest Hackathon Deadline", "location": "Online Submission", "dueText": "Next Week", "badgeColor": "primary"},
+        {"id": "e3", "title": "Cloud Arch Project Demo", "location": "Lab B • 02:30 PM", "dueText": "Apr 12", "badgeColor": "secondary"}
+    ]
+    return {"events": timeline_events}
+
+@router.get("/focus-activity")
+def get_focus_activity(
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db)
+):
+    from datetime import datetime
+    current_month = datetime.now().strftime("%B %Y")
+    return {
+        "current_month": current_month,
+        "total_hours": 68,
+        "target_hours": 80,
+        "daily_avg": "2.5 hrs/day",
+        "productive_day": "Thursday"
+    }

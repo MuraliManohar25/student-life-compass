@@ -1,4 +1,5 @@
-import React from "react";
+import React, { useState, useEffect } from "react";
+import { careerApi } from "../../services/api";
 
 interface SkillGapCardProps {
   roleTitle: string;
@@ -17,7 +18,35 @@ export const SkillGapCard: React.FC<SkillGapCardProps> = ({
   readinessScore,
   aiRecommendation,
 }) => {
-  // TODO: Replace readiness score & recommendation with backend FastAPI + Gemini API endpoint (/api/career/skill-gap)
+  const [skillGapData, setSkillGapData] = useState<any>(null);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    const fetchSkillGap = async () => {
+      try {
+        const data = await careerApi.getSkillGap();
+        setSkillGapData(data);
+      } catch (error) {
+        console.error("Failed to fetch skill gap:", error);
+      } finally {
+        setLoading(false);
+      }
+    };
+    fetchSkillGap();
+  }, []);
+
+  if (loading) {
+    return (
+      <div className="glass-card p-6 rounded-2xl border border-white/10 space-y-6">
+        <div className="text-center text-[#c7c4d8] text-sm py-8">Loading skill gap analysis...</div>
+      </div>
+    );
+  }
+
+  const actualReadinessScore = skillGapData?.readiness_score || readinessScore;
+  const actualSkillGap = skillGapData?.skill_gap || [];
+  const actualKnownSkills = knownSkills;
+  const actualMissingSkills = missingSkills;
   return (
     <div className="glass-card p-6 rounded-2xl border border-white/10 space-y-6">
       {/* Header & Readiness Score */}
@@ -29,10 +58,10 @@ export const SkillGapCard: React.FC<SkillGapCardProps> = ({
         <div className="flex items-center gap-3 bg-white/5 px-4 py-2 rounded-xl border border-white/10">
           <div className="text-right">
             <p className="text-[10px] text-[#c7c4d8] uppercase font-semibold">Career Readiness</p>
-            <p className="text-xl font-headline font-black text-emerald-400">{readinessScore}%</p>
+            <p className="text-xl font-headline font-black text-emerald-400">{actualReadinessScore}%</p>
           </div>
           <div className="w-10 h-10 rounded-full border-2 border-emerald-400 flex items-center justify-center text-xs font-bold text-emerald-400">
-            {readinessScore}%
+            {actualReadinessScore}%
           </div>
         </div>
       </div>

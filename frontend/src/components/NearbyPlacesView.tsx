@@ -82,6 +82,7 @@ export const NearbyPlacesView: React.FC = () => {
   const loadingLocation = storeState.loadingLocation;
   const loadingPlaces = storeState.loadingPlaces;
   const evaluatedPlaces = storeState.evaluatedPlaces;
+  const placesError = storeState.placesError;
 
   // Filters & Search
   const [searchQuery, setSearchQuery] = useState<string>("");
@@ -118,6 +119,10 @@ export const NearbyPlacesView: React.FC = () => {
 
   const requestLocation = () => {
     nearbyPlacesStore.requestLocation(true);
+  };
+
+  const handleRetryPlaces = () => {
+    nearbyPlacesStore.retryLoadPlaces();
   };
 
   // AI Student Insights Highlights
@@ -570,6 +575,21 @@ export const NearbyPlacesView: React.FC = () => {
                 <div className="p-12 text-center text-xs text-[#c7c4d8] flex items-center justify-center gap-2">
                   <span className="material-symbols-outlined text-sm animate-spin text-cyan-400">autorenew</span>
                   <span>Fetching real OpenStreetMap places nearby...</span>
+                </div>
+              ) : placesError ? (
+                <div className="p-12 glass-card rounded-3xl border border-rose-500/30 text-center text-xs text-[#c7c4d8] space-y-4">
+                  <span className="material-symbols-outlined text-4xl text-rose-400">wifi_off</span>
+                  <div className="space-y-2">
+                    <p className="text-sm font-bold text-white">Couldn't load nearby places</p>
+                    <p>Check your connection and try again</p>
+                  </div>
+                  <button
+                    onClick={handleRetryPlaces}
+                    className="px-6 py-2.5 rounded-2xl bg-rose-500 text-white font-bold text-xs hover:brightness-110 shadow-lg shadow-rose-500/30 flex items-center gap-2 mx-auto"
+                  >
+                    <span className="material-symbols-outlined text-sm">refresh</span>
+                    <span>Retry</span>
+                  </button>
                 </div>
               ) : filteredPlaces.length === 0 ? (
                 <div className="p-12 glass-card rounded-3xl border border-white/10 text-center text-xs text-[#c7c4d8] space-y-2">

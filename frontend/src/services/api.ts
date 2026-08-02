@@ -1,6 +1,73 @@
 import axios from 'axios';
 
-const API_BASE_URL = '/api';
+const DEV_API_FALLBACK = 'http://localhost:8000';
+const API_PATH = '/api';
+
+const getViteEnv = () => {
+  if (typeof import.meta !== 'undefined' && import.meta && 'env' in import.meta) {
+    return (import.meta as any).env ?? {};
+  }
+  return {};
+};
+
+export const normalizeApiBaseUrl = (rawValue?: string | null): string => {
+  const value = (rawValue ?? '').trim();
+
+  if (!value) {
+    return `${DEV_API_FALLBACK}${API_PATH}`;
+  }
+
+  const normalized = value.replace(/\/+$/, '');
+
+  if (!normalized) {
+    return `${DEV_API_FALLBACK}${API_PATH}`;
+  }
+
+  if (/^https?:\/\//i.test(normalized)) {
+    return normalized.endsWith(API_PATH) ? normalized : `${normalized}${API_PATH}`;
+  }
+
+  if (!normalized.includes('://')) {
+    const host = normalized.startsWith('/') ? `${DEV_API_FALLBACK}${normalized}` : `http://${normalized}`;
+    return host.endsWith(API_PATH) ? host : `${host.replace(/\/+$/, '')}${API_PATH}`;
+  }
+
+  return `${DEV_API_FALLBACK}${API_PATH}`;
+};
+
+export const resolveApiBaseUrl = (runtime: { env?: Record<string, string | undefined>; mode?: string; hostname?: string; protocol?: string } = {}) => {
+  const env = runtime.env ?? getViteEnv();
+  const mode = runtime.mode ?? env.MODE ?? (env.DEV ? 'development' : 'production');
+  const configured = env.VITE_API_URL ?? env.VITE_API_BASE_URL ?? '';
+
+  if (configured && configured.trim()) {
+    return normalizeApiBaseUrl(configured);
+  }
+
+  if (mode === 'development') {
+    return `${DEV_API_FALLBACK}${API_PATH}`;
+  }
+
+  if (typeof window !== 'undefined' && window.location?.origin) {
+    return `${window.location.origin}${API_PATH}`;
+  }
+
+  return `${DEV_API_FALLBACK}${API_PATH}`;
+};
+
+const API_BASE_URL = resolveApiBaseUrl();
+
+console.info('[API Config]', {
+  mode: getViteEnv().MODE ?? 'unknown',
+  baseApiUrl: API_BASE_URL,
+  env: {
+    VITE_API_URL: !!getViteEnv().VITE_API_URL,
+    VITE_API_BASE_URL: !!getViteEnv().VITE_API_BASE_URL,
+    DEV: !!getViteEnv().DEV,
+    PROD: !!getViteEnv().PROD,
+    HOST: typeof window !== 'undefined' ? window.location.hostname : 'server',
+  },
+});
 
 export const apiClient = axios.create({
   baseURL: API_BASE_URL,
@@ -9,12 +76,23 @@ export const apiClient = axios.create({
   },
 });
 
-// Intercept requests to add Authorization header
+// Intercept requests to add Authorization header and log the final URL
 apiClient.interceptors.request.use((config) => {
   const token = localStorage.getItem('token');
   if (token) {
     config.headers.Authorization = `Bearer ${token}`;
   }
+
+  const baseUrl = config.baseURL ?? API_BASE_URL;
+  const requestUrl = config.url ?? '/';
+  const finalUrl = new URL(requestUrl, baseUrl).toString();
+
+  console.info('[API Request]', {
+    baseApiUrl: baseUrl,
+    requestUrl,
+    finalUrl,
+  });
+
   return config;
 });
 
@@ -78,6 +156,14 @@ export const dashboardApi = {
     const res = await apiClient.get('/dashboard');
     return res.data;
   },
+  getEvents: async () => {
+    const res = await apiClient.get('/dashboard/events');
+    return res.data;
+  },
+  getFocusActivity: async () => {
+    const res = await apiClient.get('/dashboard/focus-activity');
+    return res.data;
+  },
 };
 
 // Career Mentor API
@@ -91,6 +177,18 @@ export const careerApi = {
   },
   chat: async (prompt: string) => {
     const res = await apiClient.post('/career/chat', { prompt });
+    return res.data;
+  },
+  getRoadmap: async () => {
+    const res = await apiClient.get('/career/roadmap');
+    return res.data;
+  },
+  getSkillGap: async () => {
+    const res = await apiClient.get('/career/skill-gap');
+    return res.data;
+  },
+  getResources: async () => {
+    const res = await apiClient.get('/career/resources');
     return res.data;
   },
 };
