@@ -41,6 +41,14 @@ export const authApi = {
   logout: () => {
     localStorage.removeItem('token');
   },
+  forgotPassword: async (email: string) => {
+    const res = await apiClient.post('/auth/forgot-password', { email });
+    return res.data;
+  },
+  resetPassword: async (token: string, newPassword: string) => {
+    const res = await apiClient.post('/auth/reset-password', { token, new_password: newPassword });
+    return res.data;
+  },
 };
 
 // Profile & Onboarding API
