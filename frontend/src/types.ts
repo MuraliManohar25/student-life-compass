@@ -1,73 +1,85 @@
-export type NavTab =
-  | "landing"
-  | "auth"
-  | "onboarding"
-  | "dashboard"
-  | "career-mentor"
-  | "intelligence-score"
-  | "study-planner"
-  | "budget"
-  | "nearby-places"
-  | "risk-prediction"
-  | "utilities"
-  | "settings";
+export type NavTab = 'home' | 'academics' | 'finance' | 'explore' | 'insights';
 
-export interface MissionTask {
+export type AcademicSubTab = 'planner' | 'sequencer' | 'pyqs' | 'stepguide';
+
+export interface TaskItem {
   id: string;
   title: string;
+  dueTime: string;
+  duration: string;
+  priority: 'High' | 'Medium' | 'Low' | 'Routine';
   completed: boolean;
-  category?: string;
+  course?: string;
+  description?: string;
 }
 
-export interface TimelineEvent {
+export interface ScheduleBlock {
   id: string;
+  timeRange: string;
   title: string;
   location: string;
-  dueText: string;
-  badgeColor: "error" | "primary" | "secondary" | "white";
+  instructor?: string;
+  status: 'Completed' | 'Urgent' | 'AI Sequenced' | 'Scheduled';
+  weightBadge?: string;
+  urgent?: boolean;
 }
 
-export interface CuratedResource {
+export interface ShoppingItem {
   id: string;
-  type: "COURSE" | "YOUTUBE" | "DOCS" | "PROJECT";
-  title: string;
+  name: string;
+  price: number;
   description: string;
-  meta: string;
+  budgetImpact: string;
   imageUrl: string;
-  link: string;
-  typeBg: string;
-  typeText: string;
-}
-
-export interface ActiveProject {
-  id: string;
-  title: string;
-  description: string;
-  icon: string;
-  iconBg: string;
-  iconColor: string;
-}
-
-export interface Certification {
-  id: string;
-  title: string;
-  issued: string;
-  icon: string;
-  iconBg: string;
-}
-
-export interface ChatMessage {
-  id: string;
-  sender: "mentor" | "user";
-  text: string;
-  timestamp?: string;
-  source?: string;
-}
-
-export interface ExpenseItem {
-  id: string;
-  title: string;
-  amount: number;
+  selected: boolean;
   category: string;
-  date: string;
+}
+
+export interface StudentSpot {
+  id: string;
+  name: string;
+  category: 'study' | 'food' | 'movies' | 'essentials' | 'transport' | 'career' | 'lifestyle';
+  categoryLabel: string;
+  rating: number;
+  distance: string;
+  tags: string[];
+  crowdInfo?: string;
+  extraBadge?: string;
+  actionType: 'navigate' | 'menu' | 'book_bms' | 'call' | 'rapido' | 'refill';
+  actionLabel: string;
+  imageUrl: string;
+  alert?: string;
+}
+
+export interface AIMessage {
+  id: string;
+  sender: 'user' | 'ai';
+  text?: string;
+  timestamp: string;
+  richContent?: {
+    academicPriority?: {
+      title: string;
+      duration: string;
+      slot: string;
+      pyqWeight: string;
+      checkmarks: string[];
+    };
+    financialCheck?: {
+      discretionaryBudget: number;
+      safePace: string;
+      warning: string;
+      recommendation: {
+        title: string;
+        body: string;
+        savings: string;
+        distance: string;
+      };
+    };
+    weekendPace?: Array<{
+      time: string;
+      category: string;
+      title: string;
+      type: 'social' | 'academics' | 'revision';
+    }>;
+  };
 }

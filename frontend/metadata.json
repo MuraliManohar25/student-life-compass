@@ -1,6 +1,6 @@
 {
-  "name": "Compass AI",
-  "description": "The high-performance OS for modern students. Master your budget, visualize your career path, and predict academic risks with AI.",
+  "name": "Student Compass",
+  "description": "Personalized academic companion, AI study planner, smart campus budgeting, and student discovery hub for University of Washington students.",
   "requestFramePermissions": [],
   "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
 }

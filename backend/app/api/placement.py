@@ -37,7 +37,7 @@ def get_placement_readiness(
     ml_readiness = ml_service.predict_placement_readiness(
         resume_score=resume_score,
         dsa_solved=dsa_solved,
-        projects_count=len(projects) or 3,
+        projects_count=len(projects),
         github_commits=github_commits,
         skill_match=skill_match
     )

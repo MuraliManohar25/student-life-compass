@@ -12,15 +12,16 @@ router = APIRouter(prefix="/auth", tags=["Authentication"])
 
 @router.post("/signup", response_model=Token)
 def signup(user_data: UserSignup, db: Session = Depends(get_db)):
-    existing_user = db.query(User).filter(User.email == user_data.email).first()
+    clean_email = user_data.email.strip().lower()
+    existing_user = db.query(User).filter(User.email == clean_email).first()
     if existing_user:
         raise HTTPException(status_code=400, detail="Email already registered")
 
     hashed_pwd = get_password_hash(user_data.password)
     new_user = User(
-        email=user_data.email,
+        email=clean_email,
         hashed_password=hashed_pwd,
-        full_name=user_data.full_name
+        full_name=user_data.full_name.strip()
     )
     db.add(new_user)
     db.commit()
@@ -42,7 +43,8 @@ def signup(user_data: UserSignup, db: Session = Depends(get_db)):
 
 @router.post("/login", response_model=Token)
 def login(login_data: UserLogin, db: Session = Depends(get_db)):
-    user = db.query(User).filter(User.email == login_data.email).first()
+    clean_email = login_data.email.strip().lower()
+    user = db.query(User).filter(User.email == clean_email).first()
     if not user or not verify_password(login_data.password, user.hashed_password):
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,

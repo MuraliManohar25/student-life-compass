@@ -39,7 +39,7 @@ def get_current_user_optional(
     db: Session = Depends(get_db)
 ):
     from app.models.models import User
-    if not token:
+    if not token or token == "undefined" or token == "null":
         return None
 
     try:

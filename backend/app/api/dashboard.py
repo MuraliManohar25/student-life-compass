@@ -12,76 +12,100 @@ def get_dashboard(
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db)
 ):
+    from app.models.models import BudgetPrediction, PlacementProgress, Skill
     profile = db.query(Profile).filter(Profile.user_id == current_user.id).first()
     expenses = db.query(Expense).filter(Expense.user_id == current_user.id).all()
     total_spent = sum(e.amount for e in expenses)
     sessions = db.query(StudySession).filter(StudySession.user_id == current_user.id).all()
+    placements = db.query(PlacementProgress).filter(PlacementProgress.user_id == current_user.id).all()
 
-    from app.models.models import BudgetPrediction
     budget_pred = db.query(BudgetPrediction).filter(BudgetPrediction.user_id == current_user.id).first()
     monthly_budget = budget_pred.monthly_budget if (budget_pred and budget_pred.monthly_budget > 0) else 5000.0
     remaining_budget = max(0.0, monthly_budget - total_spent)
     daily_limit = budget_pred.daily_cap if (budget_pred and budget_pred.daily_cap > 0) else round(monthly_budget / 30.0, 2)
 
     tasks_list = [
-        {"id": "1", "title": "Complete DBMS Lab Assignment 4", "completed": False, "category": "Academic"},
-        {"id": "2", "title": "Solve 2 DSA Problems on LeetCode", "completed": True, "category": "Career"},
-        {"id": "3", "title": "Keep daily hostel spend below ₹150", "completed": False, "category": "Budget"},
-        {"id": "4", "title": "Submit application for Stripe Intern", "completed": True, "category": "Placement"}
+        {
+            "id": str(s.id),
+            "title": s.title,
+            "completed": s.status == "Done",
+            "category": s.tag or "Academic"
+        }
+        for s in sessions
     ]
 
     timeline_events = [
-        {"id": "e1", "title": "Operating Systems Mid-Term", "location": "Hall 302 • 10:00 AM", "dueText": "In 2 Days", "badgeColor": "error"},
-        {"id": "e2", "title": "TechFest Hackathon Deadline", "location": "Online Submission", "dueText": "Next Week", "badgeColor": "primary"},
-        {"id": "e3", "title": "Cloud Arch Project Demo", "location": "Lab B • 02:30 PM", "dueText": "Apr 12", "badgeColor": "secondary"}
+        {
+            "id": f"e{s.id}",
+            "title": s.title,
+            "location": f"{s.room or 'Campus'} • {s.scheduled_time}",
+            "dueText": s.scheduled_time,
+            "badgeColor": "error" if "exam" in s.title.lower() or "mid-term" in s.title.lower() else "primary"
+        }
+        for s in sessions
     ]
+
+    # Calculate user scores dynamically
+    completed_sessions = sum(1 for s in sessions if s.status == "Done")
+    session_completion_rate = (completed_sessions / max(1, len(sessions))) * 100 if sessions else 70.0
+    gpa_pct = ((profile.current_gpa / 4.0) * 100) if (profile and profile.current_gpa > 0) else 75.0
+    academic_index = round((gpa_pct * 0.6) + (session_completion_rate * 0.4), 1)
+
+    if placements:
+        placement_odds = round(sum(p.match_percentage for p in placements) / len(placements), 1)
+    else:
+        placement_odds = 70.0 if (profile and profile.target_role) else 50.0
+
+    intelligence_score = round((academic_index * 0.5) + (placement_odds * 0.5), 1)
 
     rhythm_activity = [
-        {"day": "Mon", "val": 65, "label": "2.5h"},
-        {"day": "Tue", "val": 80, "label": "3.2h"},
-        {"day": "Wed", "val": 45, "label": "1.8h"},
-        {"day": "Thu", "val": 90, "label": "4.0h"},
-        {"day": "Fri", "val": 75, "label": "3.0h"},
-        {"day": "Sat", "val": 30, "label": "1.0h"},
-        {"day": "Sun", "val": 60, "label": "2.2h"}
+        {"day": "Mon", "val": 60, "label": "2.0h"},
+        {"day": "Tue", "val": 75, "label": "2.8h"},
+        {"day": "Wed", "val": 50, "label": "1.9h"},
+        {"day": "Thu", "val": 85, "label": "3.5h"},
+        {"day": "Fri", "val": 70, "label": "2.5h"},
+        {"day": "Sat", "val": 40, "label": "1.2h"},
+        {"day": "Sun", "val": 55, "label": "2.0h"}
     ]
 
-    ai_actions = [
-        {
+    ai_actions = []
+    if profile and profile.target_role:
+        ai_actions.append({
             "id": "a1",
-            "title": "Study Flashcards: Operating Systems",
-            "meta": "Memory Management & Virtualization • 15 Mins",
-            "tab": "study-planner",
-            "icon": "school",
-            "color": "cyan"
-        },
-        {
-            "id": "a2",
-            "title": "Apply: Junior Dev at Stripe",
-            "meta": "92% Match with your Python & API profile",
+            "title": f"Skill Prep: {profile.target_role}",
+            "meta": f"Target role: {profile.target_role}",
             "tab": "career-mentor",
             "icon": "work",
             "color": "indigo"
-        },
-        {
-            "id": "a3",
-            "title": "Optimization Insight: Hostel Canteen",
-            "meta": "Saved ₹400 by avoiding late food deliveries",
+        })
+    if remaining_budget < 1000:
+        ai_actions.append({
+            "id": "a2",
+            "title": "Budget Alert",
+            "meta": f"Runway remaining: ₹{remaining_budget:.2f}",
             "tab": "budget",
             "icon": "savings",
             "color": "emerald"
-        }
-    ]
+        })
+    if not ai_actions:
+        ai_actions.append({
+            "id": "a1",
+            "title": "Set Up Academic Profile",
+            "meta": "Add courses and goals",
+            "tab": "study-planner",
+            "icon": "school",
+            "color": "cyan"
+        })
 
     return {
         "user_name": current_user.full_name or "Student",
-        "cohort_standing": profile.cohort_standing if profile else "Top 15%",
-        "intelligence_score": 84.0,
-        "score_trend": "+6%",
-        "remaining_budget": remaining_budget,
-        "daily_budget_limit": daily_limit,
-        "academic_index": 72.0,
-        "placement_odds": 68.0,
+        "cohort_standing": profile.cohort_standing if profile else "Standard",
+        "intelligence_score": intelligence_score,
+        "score_trend": "+4%",
+        "remaining_budget": round(remaining_budget, 2),
+        "daily_budget_limit": round(daily_limit, 2),
+        "academic_index": academic_index,
+        "placement_odds": placement_odds,
         "tasks": tasks_list,
         "timeline_events": timeline_events,
         "rhythm_activity": rhythm_activity,
@@ -93,12 +117,18 @@ def get_dashboard_events(
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db)
 ):
-    timeline_events = [
-        {"id": "e1", "title": "Operating Systems Mid-Term", "location": "Hall 302 • 10:00 AM", "dueText": "In 2 Days", "badgeColor": "error"},
-        {"id": "e2", "title": "TechFest Hackathon Deadline", "location": "Online Submission", "dueText": "Next Week", "badgeColor": "primary"},
-        {"id": "e3", "title": "Cloud Arch Project Demo", "location": "Lab B • 02:30 PM", "dueText": "Apr 12", "badgeColor": "secondary"}
+    sessions = db.query(StudySession).filter(StudySession.user_id == current_user.id).all()
+    events = [
+        {
+            "id": f"e{s.id}",
+            "title": s.title,
+            "location": f"{s.room or 'Campus'} • {s.scheduled_time}",
+            "dueText": s.scheduled_time,
+            "badgeColor": "error" if "exam" in s.title.lower() or "mid-term" in s.title.lower() else "primary"
+        }
+        for s in sessions
     ]
-    return {"events": timeline_events}
+    return {"events": events}
 
 @router.get("/focus-activity")
 def get_focus_activity(
@@ -106,11 +136,14 @@ def get_focus_activity(
     db: Session = Depends(get_db)
 ):
     from datetime import datetime
+    sessions = db.query(StudySession).filter(StudySession.user_id == current_user.id).all()
+    total_minutes = sum(s.duration_minutes for s in sessions if s.status == "Done")
+    total_hours = round(total_minutes / 60.0, 1)
     current_month = datetime.now().strftime("%B %Y")
     return {
         "current_month": current_month,
-        "total_hours": 68,
+        "total_hours": total_hours,
         "target_hours": 80,
-        "daily_avg": "2.5 hrs/day",
+        "daily_avg": f"{round(total_hours / 30.0, 1)} hrs/day",
         "productive_day": "Thursday"
     }

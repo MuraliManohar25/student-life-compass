@@ -27,8 +27,8 @@ def predict_academic_risk(
     result = ml_service.predict_academic_risk(
         workload_density=workload,
         sleep_hours=sleep_hrs,
-        upcoming_exams=upcoming_exams or 1,
-        pending_assignments=pending_assignments or 3,
+        upcoming_exams=upcoming_exams,
+        pending_assignments=pending_assignments,
         current_gpa=gpa
     )
 
