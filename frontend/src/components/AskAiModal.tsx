@@ -52,14 +52,20 @@ export const AskAiModal: React.FC<AskAiModalProps> = ({
     try {
       let profileContext: any = { activeTab };
       try {
-        const { profileApi } = await import("../services/api");
-        const profile = await profileApi.getProfile();
-        if (profile) {
+        const { profileApi, budgetApi } = await import("../services/api");
+        const [profile, budgetSummary] = await Promise.all([
+          profileApi.getProfile().catch(() => null),
+          budgetApi.getSummary().catch(() => null),
+        ]);
+        if (profile || budgetSummary) {
           profileContext = {
-            target_role: profile.target_role,
-            market_match_index: profile.market_match_index,
-            current_gpa: profile.current_gpa,
-            college: profile.college,
+            target_role: profile?.target_role,
+            market_match_index: profile?.market_match_index,
+            current_gpa: profile?.current_gpa,
+            college: profile?.college,
+            monthly_budget: budgetSummary?.monthly_budget ?? profile?.monthly_budget,
+            remaining_budget: budgetSummary?.remaining_balance,
+            daily_cap: budgetSummary?.daily_cap,
             activeTab,
           };
         }

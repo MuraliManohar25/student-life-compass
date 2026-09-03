@@ -91,8 +91,7 @@ def root():
     }
 
 @app.get("/profile/me", response_model=ProfileOut)
-@app.get("/api/profile/me", response_model=ProfileOut)
-def profile_me_alias(
+def profile_me_unprefixed_alias(
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):

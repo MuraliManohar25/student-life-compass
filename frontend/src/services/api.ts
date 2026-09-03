@@ -80,13 +80,15 @@ export const apiClient = axios.create({
 // Intercept requests to add Authorization header and log the final URL
 apiClient.interceptors.request.use((config) => {
   const token = localStorage.getItem('token');
-  if (token) {
+  if (token && token !== 'undefined' && token !== 'null') {
     config.headers.Authorization = `Bearer ${token}`;
+  } else {
+    delete config.headers.Authorization;
   }
 
   const baseUrl = config.baseURL ?? API_BASE_URL;
   const requestUrl = config.url ?? '/';
-  const finalUrl = new URL(requestUrl, baseUrl).toString();
+  const finalUrl = `${baseUrl.replace(/\/+$/, '')}/${requestUrl.replace(/^\/+/, '')}`;
 
   console.info('[API Request]', {
     baseApiUrl: baseUrl,
@@ -101,15 +103,19 @@ apiClient.interceptors.request.use((config) => {
 export const authApi = {
   signup: async (email: string, password: string, fullName: string) => {
     const res = await apiClient.post('/auth/signup', { email, password, full_name: fullName });
-    if (res.data.access_token) {
+    if (res.data && res.data.access_token) {
       localStorage.setItem('token', res.data.access_token);
+    } else {
+      localStorage.removeItem('token');
     }
     return res.data;
   },
   login: async (email: string, password: string) => {
     const res = await apiClient.post('/auth/login', { email, password });
-    if (res.data.access_token) {
+    if (res.data && res.data.access_token) {
       localStorage.setItem('token', res.data.access_token);
+    } else {
+      localStorage.removeItem('token');
     }
     return res.data;
   },

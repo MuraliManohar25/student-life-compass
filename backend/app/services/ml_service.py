@@ -26,36 +26,40 @@ class MLService:
         except Exception as e:
             print(f"Warning: Could not load ML models directly: {e}")
 
-    def predict_budget(self, daily_avg: float, days_elapsed: int, total_days: int = 30, food_ratio: float = 0.4, academic_ratio: float = 0.3, monthly_budget: float = 5000.0) -> dict:
-        if self.budget_model:
-            features = np.array([[daily_avg, days_elapsed, total_days, food_ratio, academic_ratio]])
-            predicted_total = float(self.budget_model.predict(features)[0])
-        else:
-            predicted_total = daily_avg * total_days * 1.05
-
-        predicted_total = max(predicted_total, daily_avg * days_elapsed)
-        user_budget = monthly_budget if monthly_budget > 0 else 5000.0
-        remaining_budget = max(0.0, user_budget - (daily_avg * days_elapsed))
-        daily_cap = max(50.0, remaining_budget / max(1, (total_days - days_elapsed)))
-
+    def generate_budget_suggestions(self, remaining_budget: float, daily_cap: float, food_ratio: float) -> list:
         suggestions = []
-        if daily_avg > 180:
-            suggestions.append("Hostel canteen expenses are above average. Limit coffee & food delivery spending.")
+        if food_ratio > 0.45:
+            suggestions.append("Canteen and dining spending is taking over 45% of your budget. Opt for meal plans or monthly subscriptions to save.")
         else:
-            suggestions.append("Great spending discipline! You saved ₹400 by avoiding late food delivery fees.")
+            suggestions.append("Balanced dining spending! You are keeping food expenses within optimal limits.")
 
-        if remaining_budget < 1000:
-            suggestions.append("Caution: Budget runway is low for the remainder of the month.")
+        if daily_cap < 100.0:
+            suggestions.append(f"Tight daily runway (₹{daily_cap:.2f}/day remaining). Prioritize essential campus purchases.")
         else:
-            suggestions.append("Financial runway is healthy for hostel & academic needs.")
+            suggestions.append(f"Healthy daily runway (₹{daily_cap:.2f}/day available for the rest of the month).")
+
+        if remaining_budget < 1000.0:
+            suggestions.append("Caution: Budget runway is below ₹1,000 for the remainder of the month.")
+        else:
+            suggestions.append("Financial runway is healthy for hostel, canteen, and academic needs.")
+
+        return suggestions
+
+    def predict_budget(self, daily_avg: float, days_elapsed: int, total_days: int = 30, food_ratio: float = 0.4, academic_ratio: float = 0.3, monthly_budget: float = 5000.0) -> dict:
+        user_budget = monthly_budget if monthly_budget > 0 else 5000.0
+        predicted_monthly_total = daily_avg * total_days * (1.0 + 0.15 * food_ratio)
+        days_remaining = max(1, total_days - days_elapsed)
+        total_spent = daily_avg * days_elapsed
+        remaining_budget = user_budget - total_spent
+        daily_cap = max(0.0, remaining_budget / days_remaining)
 
         return {
-            "predicted_monthly_total": round(predicted_total, 2),
             "remaining_budget": round(remaining_budget, 2),
             "monthly_budget": user_budget,
             "daily_cap": round(daily_cap, 2),
-            "suggestions": suggestions,
-            "forecast_confidence": 94.5
+            "predicted_monthly_total": round(predicted_monthly_total, 2),
+            "forecast_confidence": 0.95,
+            "suggestions": self.generate_budget_suggestions(remaining_budget, daily_cap, food_ratio)
         }
 
     def predict_academic_risk(self, workload_density: float, sleep_hours: float, upcoming_exams: int, pending_assignments: int, current_gpa: float) -> dict:

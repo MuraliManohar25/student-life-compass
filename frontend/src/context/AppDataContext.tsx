@@ -109,8 +109,37 @@ export function AppDataProvider({ children }: { children: React.ReactNode }) {
     setScoreTrend(computeScoreTrend());
   }, []);
 
-  const refreshBudget = useCallback(() => {
+  const refreshBudget = useCallback(async () => {
     const monthKey = getCurrentMonthKey();
+    const token = localStorage.getItem("token");
+    if (token && token !== "undefined" && token !== "null") {
+      try {
+        const { budgetApi } = await import("../services/api");
+        const summary = await budgetApi.getSummary();
+        if (summary) {
+          setBudgetSummary({
+            monthlyBudget: summary.monthly_budget,
+            monthlyIncome: summary.monthly_budget,
+            savingGoal: 0,
+            currency: "₹",
+            totalSpent: summary.total_spent,
+            remainingBudget: summary.remaining_balance,
+            savings: Math.max(0, summary.monthly_budget - summary.total_spent),
+            expectedEndSpend: summary.predicted_monthly_total,
+            overspendingProbability: summary.predicted_monthly_total > summary.monthly_budget ? 75 : 15,
+            budgetUtilization: Math.round((summary.total_spent / Math.max(1, summary.monthly_budget)) * 100),
+            safeDailyLimit: summary.daily_cap,
+            financialScore: 85,
+            goalProgressPercent: 50,
+          });
+          setIntelligenceScore(PerformanceEngine.getOverallScore());
+          setScoreTrend(computeScoreTrend());
+          return;
+        }
+      } catch {
+        // Fall back to local calculation if network error
+      }
+    }
     setBudgetSummary(BudgetEngine.getCalculations(monthKey));
     setIntelligenceScore(PerformanceEngine.getOverallScore());
     setScoreTrend(computeScoreTrend());

@@ -20,7 +20,18 @@ def get_my_profile(
         db.refresh(profile)
 
     budget_pred = db.query(BudgetPrediction).filter(BudgetPrediction.user_id == current_user.id).first()
-    user_monthly_budget = budget_pred.monthly_budget if budget_pred else 0.0
+    if not budget_pred:
+        budget_pred = BudgetPrediction(
+            user_id=current_user.id,
+            monthly_budget=5000.0,
+            remaining_budget=5000.0,
+            daily_cap=166.67
+        )
+        db.add(budget_pred)
+        db.commit()
+        db.refresh(budget_pred)
+
+    user_monthly_budget = budget_pred.monthly_budget if budget_pred else 5000.0
 
     return {
         "id": profile.id,

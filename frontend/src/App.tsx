@@ -25,7 +25,8 @@ export function App() {
 
   const checkUserProfile = async () => {
     const token = localStorage.getItem("token");
-    if (!token) {
+    if (!token || token === "undefined" || token === "null") {
+      localStorage.removeItem("token");
       setIsAuthenticated(false);
       setIsProfileComplete(false);
       setCheckingAuth(false);
@@ -54,8 +55,13 @@ export function App() {
   }, []);
 
   const handleAuthSuccess = (token: string, isNewUser: boolean, profileComplete: boolean) => {
-    localStorage.setItem("token", token);
-    setIsAuthenticated(true);
+    if (token && token !== "undefined" && token !== "null") {
+      localStorage.setItem("token", token);
+      setIsAuthenticated(true);
+    } else {
+      localStorage.removeItem("token");
+      setIsAuthenticated(false);
+    }
     if (isNewUser || !profileComplete) {
       setIsProfileComplete(false);
       setActiveTab("onboarding");
@@ -72,7 +78,7 @@ export function App() {
 
   const handleStartFromLanding = () => {
     const token = localStorage.getItem("token");
-    if (!token) {
+    if (!token || token === "undefined" || token === "null") {
       setActiveTab("auth");
     } else if (!isProfileComplete) {
       setActiveTab("onboarding");
@@ -88,7 +94,7 @@ export function App() {
       return;
     }
     const token = localStorage.getItem("token");
-    if (!token) {
+    if (!token || token === "undefined" || token === "null") {
       setActiveTab("auth");
       return;
     }
