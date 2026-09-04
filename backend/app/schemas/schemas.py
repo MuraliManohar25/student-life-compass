@@ -3,31 +3,9 @@ from pydantic import BaseModel, EmailStr
 from datetime import datetime
 
 # Auth Schemas
-class UserSignup(BaseModel):
-    email: EmailStr
-    password: str
-    full_name: str
-
-class UserLogin(BaseModel):
-    email: EmailStr
-    password: str
-
-class Token(BaseModel):
-    access_token: str
-    token_type: str = "bearer"
-    user_id: int
-    email: str
-    full_name: str
-
-class ForgotPasswordRequest(BaseModel):
-    email: EmailStr
-
-class ResetPasswordRequest(BaseModel):
-    token: str
-    new_password: str
-
 class UserOut(BaseModel):
     id: int
+    supabase_id: str
     email: str
     full_name: str
     role: str

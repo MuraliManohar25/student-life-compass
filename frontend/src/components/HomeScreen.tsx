@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { TaskItem, StudentSpot, NavTab } from '../types';
 
 interface HomeScreenProps {
@@ -20,16 +20,24 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({
   const [taskStarted, setTaskStarted] = useState(false);
   const [snoozedPriority, setSnoozedPriority] = useState(false);
   const [selectedSpotDay, setSelectedSpotDay] = useState<string>('wed');
+  const timeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const completedCount = tasks.filter((t) => t.completed).length;
 
   const handleStartTask = () => {
+    if (timeoutRef.current) clearTimeout(timeoutRef.current);
     setActiveTaskStarting(true);
-    setTimeout(() => {
+    timeoutRef.current = setTimeout(() => {
       setActiveTaskStarting(false);
       setTaskStarted(true);
     }, 600);
   };
+
+  useEffect(() => {
+    return () => {
+      if (timeoutRef.current) clearTimeout(timeoutRef.current);
+    };
+  }, []);
 
   return (
     <div className="flex flex-col w-full px-4 sm:px-6 lg:px-8 space-y-6 max-w-[1400px] mx-auto pb-6 pt-1 lg:pt-2">

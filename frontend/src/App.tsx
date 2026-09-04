@@ -3,7 +3,7 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-import React, { useState } from 'react';
+import { useState } from 'react';
 import { NavTab, AcademicSubTab, TaskItem, ScheduleBlock, ShoppingItem, StudentSpot } from './types';
 import {
   INITIAL_TASKS,
@@ -24,8 +24,11 @@ import { CompassAIDrawer } from './components/CompassAIDrawer';
 import { StudentProfileModal } from './components/StudentProfileModal';
 import { SearchModal } from './components/SearchModal';
 import { NotificationsModal } from './components/NotificationsModal';
+import { AuthProvider, useAuth } from './context/AuthContext';
+import { LoginScreen } from './components/LoginScreen';
+import { SignupScreen } from './components/SignupScreen';
 
-export default function App() {
+function AppShell() {
   const [currentTab, setCurrentTab] = useState<NavTab>('home');
   const [academicSubTab, setAcademicSubTab] = useState<AcademicSubTab>('sequencer');
   const [tasks, setTasks] = useState<TaskItem[]>(INITIAL_TASKS);
@@ -177,5 +180,41 @@ export default function App() {
         }}
       />
     </div>
+  );
+}
+
+type AuthMode = 'login' | 'signup';
+
+function AuthGate() {
+  const { isAuthenticated, isLoading } = useAuth();
+  const [authMode, setAuthMode] = useState<AuthMode>('login');
+
+  if (isLoading) {
+    return (
+      <div className="min-h-screen w-full flex items-center justify-center bg-surface">
+        <div className="flex flex-col items-center gap-3">
+          <div className="w-10 h-10 border-3 border-indigo-200 border-t-indigo-600 rounded-full animate-spin" />
+          <span className="text-xs font-medium text-on-surface-variant">Loading Student Compass…</span>
+        </div>
+      </div>
+    );
+  }
+
+  if (!isAuthenticated) {
+    return authMode === 'login' ? (
+      <LoginScreen onSwitchToSignup={() => setAuthMode('signup')} />
+    ) : (
+      <SignupScreen onSwitchToLogin={() => setAuthMode('login')} />
+    );
+  }
+
+  return <AppShell />;
+}
+
+export default function App() {
+  return (
+    <AuthProvider>
+      <AuthGate />
+    </AuthProvider>
   );
 }

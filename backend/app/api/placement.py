@@ -8,6 +8,7 @@ from app.services.ml_service import ml_service
 
 router = APIRouter(prefix="", tags=["Placement Readiness"])
 
+
 @router.get("/placement-readiness", response_model=PlacementReadinessResponse)
 def get_placement_readiness(
     current_user: User = Depends(get_current_user),
@@ -25,7 +26,6 @@ def get_placement_readiness(
             "role": a.role,
             "match": f"{int(a.match_percentage)}%",
             "status": a.status,
-            "color": "bg-purple-500/20 text-purple-300" if a.status == "Interviewing" else "bg-[#4f46e5]/20 text-[#c3c0ff]"
         })
 
     # Derive values from real user data
@@ -44,6 +44,7 @@ def get_placement_readiness(
 
     ml_readiness["applications"] = app_list
     return ml_readiness
+
 
 @router.post("/placement/applications")
 def add_application(

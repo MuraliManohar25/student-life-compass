@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { StudentSpot } from '../types';
 
 interface ExploreScreenProps {
@@ -11,6 +11,7 @@ export const ExploreScreen: React.FC<ExploreScreenProps> = ({ spots }) => {
   const [viewMode, setViewMode] = useState<'list' | 'radar'>('list');
   const [activeSpotModal, setActiveSpotModal] = useState<StudentSpot | null>(null);
   const [actionFeedback, setActionFeedback] = useState<string | null>(null);
+  const timeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const categories = [
     { id: 'all', label: 'All Spots', icon: 'apps' },
@@ -48,8 +49,15 @@ export const ExploreScreen: React.FC<ExploreScreenProps> = ({ spots }) => {
       msg = `Opened ${spot.name}`;
     }
     setActionFeedback(msg);
-    setTimeout(() => setActionFeedback(null), 3500);
+    if (timeoutRef.current) clearTimeout(timeoutRef.current);
+    timeoutRef.current = setTimeout(() => setActionFeedback(null), 3500);
   };
+
+  useEffect(() => {
+    return () => {
+      if (timeoutRef.current) clearTimeout(timeoutRef.current);
+    };
+  }, []);
 
   return (
     <div className="flex flex-col w-full px-4 sm:px-6 lg:px-8 space-y-6 max-w-[1400px] mx-auto pb-6 pt-1 lg:pt-2">
@@ -149,7 +157,7 @@ export const ExploreScreen: React.FC<ExploreScreenProps> = ({ spots }) => {
         {/* Left Column: Live Radar & Tip Card */}
         <div className="lg:col-span-5 space-y-6">
           {/* CAMPUS RADAR CARD (Visible in Radar mode or on desktop) */}
-          {(viewMode === 'radar' || true) && (
+          {viewMode === 'radar' && (
             <div className="relative overflow-hidden rounded-3xl bg-surface-container-highest p-5 shadow-sm text-center space-y-4 border border-outline-variant/20">
               <div className="flex items-center justify-between text-left">
                 <div>
@@ -199,6 +207,7 @@ export const ExploreScreen: React.FC<ExploreScreenProps> = ({ spots }) => {
                 </button>
 
                 {/* Beacon 3: Metro */}
+                {spots.length > 4 && (
                 <button
                   onClick={() => setActiveSpotModal(spots[4])}
                   className="absolute top-20 right-14 p-1.5 rounded-full bg-surface-container-lowest text-outline shadow-md hover:scale-110 transition-transform cursor-pointer"
@@ -207,6 +216,7 @@ export const ExploreScreen: React.FC<ExploreScreenProps> = ({ spots }) => {
                 >
                   <span className="material-symbols-outlined text-[16px]">directions_subway</span>
                 </button>
+                )}
               </div>
 
               <p className="text-[12px] text-on-surface-variant">

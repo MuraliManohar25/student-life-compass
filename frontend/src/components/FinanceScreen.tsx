@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { ShoppingItem } from '../types';
 
 interface FinanceScreenProps {
@@ -13,6 +13,7 @@ export const FinanceScreen: React.FC<FinanceScreenProps> = ({
   const [selectedDay, setSelectedDay] = useState<string>('wed');
   const [showReserveModal, setShowReserveModal] = useState(false);
   const [reserveSuccess, setReserveSuccess] = useState(false);
+  const timeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const baseBalance = 2500;
   const selectedItemsTotal = shoppingItems
@@ -23,11 +24,18 @@ export const FinanceScreen: React.FC<FinanceScreenProps> = ({
 
   const handleConfirmReservation = () => {
     setReserveSuccess(true);
-    setTimeout(() => {
+    if (timeoutRef.current) clearTimeout(timeoutRef.current);
+    timeoutRef.current = setTimeout(() => {
       setReserveSuccess(false);
       setShowReserveModal(false);
     }, 1800);
   };
+
+  useEffect(() => {
+    return () => {
+      if (timeoutRef.current) clearTimeout(timeoutRef.current);
+    };
+  }, []);
 
   return (
     <div className="flex flex-col w-full px-4 sm:px-6 lg:px-8 space-y-6 max-w-[1400px] mx-auto pb-6 pt-1 lg:pt-2">

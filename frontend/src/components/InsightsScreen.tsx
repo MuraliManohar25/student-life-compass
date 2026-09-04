@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 
 interface InsightsScreenProps {
   onOpenStudyGuide: () => void;
@@ -7,11 +7,19 @@ interface InsightsScreenProps {
 export const InsightsScreen: React.FC<InsightsScreenProps> = ({ onOpenStudyGuide }) => {
   const [activeSegment, setActiveSegment] = useState<'performance' | 'risk'>('performance');
   const [appliedRiskAction, setAppliedRiskAction] = useState<string | null>(null);
+  const timeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const handleApplyRisk = (riskId: string, desc: string) => {
     setAppliedRiskAction(desc);
-    setTimeout(() => setAppliedRiskAction(null), 3000);
+    if (timeoutRef.current) clearTimeout(timeoutRef.current);
+    timeoutRef.current = setTimeout(() => setAppliedRiskAction(null), 3000);
   };
+
+  useEffect(() => {
+    return () => {
+      if (timeoutRef.current) clearTimeout(timeoutRef.current);
+    };
+  }, []);
 
   return (
     <div className="flex flex-col w-full px-4 sm:px-6 lg:px-8 space-y-6 max-w-[1400px] mx-auto pb-6 pt-1 lg:pt-2">

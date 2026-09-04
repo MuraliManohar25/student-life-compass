@@ -1,14 +1,16 @@
 import os
+import logging
 from google import genai
+
+logger = logging.getLogger(__name__)
+
 
 class GeminiService:
     def __init__(self):
         self.api_key = os.getenv("GEMINI_API_KEY", "")
-        # New SDK: create the client once, reuse it for every call
         self.client = genai.Client(api_key=self.api_key) if self.api_key else None
 
     def analyze_career(self, target_role: str, profile_data: dict) -> dict:
-        # unchanged — this method doesn't call Gemini directly
         if profile_data and "market_match_index" in profile_data:
             match_index = profile_data.get("market_match_index", 75.0)
         else:
@@ -32,7 +34,7 @@ class GeminiService:
                     "title": "Foundational Skills",
                     "description": "Build core programming and system design fundamentals.",
                     "progress": 50,
-                    "status": "IN PROGRESS"
+                    "status": "IN_PROGRESS"
                 },
                 {
                     "week": 2,
@@ -48,29 +50,29 @@ class GeminiService:
                 "id": "r1", "type": "COURSE", "title": "Deep Learning Specialization",
                 "description": "Master Neural Networks, CNNs, Transformers and Hyperparameter tuning.",
                 "meta": "DeepLearning.AI • 8 Weeks",
-                "imageUrl": "https://images.unsplash.com/photo-1516321318423-f06f85e504b3?w=500&auto=format&fit=crop&q=60",
-                "link": "https://coursera.org", "typeBg": "bg-purple-500/20", "typeText": "text-purple-300"
+                "image_url": "https://images.unsplash.com/photo-1516321318423-f06f85e504b3?w=500&auto=format&fit=crop&q=60",
+                "link": "https://coursera.org", "resource_type": "course"
             },
             {
                 "id": "r2", "type": "YOUTUBE", "title": "MLOps Crash Course 2024",
                 "description": "Deploying PyTorch models with Docker, FastAPI, and GitHub Actions.",
                 "meta": "FreeCodeCamp • 1.2M Views",
-                "imageUrl": "https://images.unsplash.com/photo-1526374965328-7f61d4dc18c5?w=500&auto=format&fit=crop&q=60",
-                "link": "https://youtube.com", "typeBg": "bg-red-500/20", "typeText": "text-red-300"
+                "image_url": "https://images.unsplash.com/photo-1526374965328-7f61d4dc18c5?w=500&auto=format&fit=crop&q=60",
+                "link": "https://youtube.com", "resource_type": "video"
             },
             {
                 "id": "r3", "type": "DOCS", "title": "PyTorch Optimization & ONNX Runtime",
                 "description": "Official guide on converting PyTorch checkpoints for high-throughput inference.",
                 "meta": "PyTorch Docs • 15 Min Read",
-                "imageUrl": "https://images.unsplash.com/photo-1555949963-ff9fe0c870eb?w=500&auto=format&fit=crop&q=60",
-                "link": "https://pytorch.org", "typeBg": "bg-[#4f46e5]/20", "typeText": "text-[#c3c0ff]"
+                "image_url": "https://images.unsplash.com/photo-1555949963-ff9fe0c870eb?w=500&auto=format&fit=crop&q=60",
+                "link": "https://pytorch.org", "resource_type": "documentation"
             },
             {
                 "id": "r4", "type": "PROJECT", "title": "Real-time Object Detection Pipeline",
                 "description": "Hands-on project: OpenCV, YOLOv8, and WebRTC streaming for edge devices.",
                 "meta": "GitHub Project • 4.8★ Rating",
-                "imageUrl": "https://images.unsplash.com/photo-1517694712202-14dd9538aa97?w=500&auto=format&fit=crop&q=60",
-                "link": "https://github.com", "typeBg": "bg-emerald-500/20", "typeText": "text-emerald-300"
+                "image_url": "https://images.unsplash.com/photo-1517694712202-14dd9538aa97?w=500&auto=format&fit=crop&q=60",
+                "link": "https://github.com", "resource_type": "project"
             }
         ]
 
@@ -87,7 +89,7 @@ class GeminiService:
             try:
                 ctx_str = f"Student Target Role: {target_role}. Profile Context: {profile_data if profile_data else 'Standard'}"
                 response = self.client.models.generate_content(
-                    model="gemini-3.5-flash",
+                    model="gemini-1.5-flash",
                     contents=(
                         f"You are an elite AI Career Mentor for a university student. {ctx_str}\n"
                         f"Keep responses concise and use short bullet points where appropriate.\n"
@@ -97,9 +99,7 @@ class GeminiService:
                 if response and response.text:
                     return response.text, True
             except Exception as e:
-                # IMPORTANT: on Render, check the deployed logs for this exact line
-                # to see the real error instead of guessing
-                print(f"[GEMINI ERROR - chat_dialogue] {type(e).__name__}: {e}")
+                logger.error(f"[GEMINI ERROR - chat_dialogue] {type(e).__name__}: {e}")
 
         role_title = target_role or "technical"
         if "docker" in prompt.lower():
@@ -118,14 +118,13 @@ class GeminiService:
                     "career development, interview prep, skill building, and budget optimization."
                 )
                 response = self.client.models.generate_content(
-                    model="gemini-3.5-flash",
+                    model="gemini-1.5-flash",
                     contents=f"{sys_inst}\n\nStudent Query: {prompt}\nContext: {context}",
                 )
                 if response and response.text:
                     return response.text, True
             except Exception as e:
-                # IMPORTANT: on Render, check the deployed logs for this exact line
-                print(f"[GEMINI ERROR - ask_assistant] {type(e).__name__}: {e}")
+                logger.error(f"[GEMINI ERROR - ask_assistant] {type(e).__name__}: {e}")
 
         if "exam" in prompt.lower() or "os" in prompt.lower():
             return "For Operating Systems, prioritize Virtual Memory, Paging, Process Scheduling (Round Robin/CFS), and Deadlock Prevention (Banker's Algorithm). Allocate active recall practice today.", False
@@ -133,5 +132,6 @@ class GeminiService:
             return "Keep track of daily expenses and limit late-night delivery fees to maintain a healthy monthly budget runway.", False
         else:
             return "Based on your academic workload, prioritizing high-impact assignments tonight will keep you on track.", False
+
 
 gemini_service = GeminiService()

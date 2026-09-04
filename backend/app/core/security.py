@@ -1,63 +1,88 @@
-from datetime import datetime, timedelta, timezone
 from typing import Optional
+import httpx
 import jwt
-import bcrypt
+from jwt import PyJWKClient
 from fastapi import Depends, HTTPException, status
-from fastapi.security import OAuth2PasswordBearer
+from fastapi.security import OAuth2AuthorizationCodeBearer, OAuth2PasswordBearer
 from sqlalchemy.orm import Session
 
 from app.core.config import settings
 from app.core.database import get_db
+from app.models.models import User
 
-oauth2_scheme = OAuth2PasswordBearer(tokenUrl=f"{settings.API_V1_STR}/auth/login", auto_error=False)
+# Supabase JWKS URL for JWT verification
+SUPABASE_JWKS_URL = f"{settings.SUPABASE_URL}/auth/v1/keys"
 
-def verify_password(plain_password: str, hashed_password: str) -> bool:
-    try:
-        plain_bytes = plain_password.encode("utf-8")[:72]
-        hashed_bytes = hashed_password.encode("utf-8")
-        return bcrypt.checkpw(plain_bytes, hashed_bytes)
-    except Exception:
-        return False
+# OAuth2 scheme - tokenUrl points to Supabase login (handled on frontend)
+oauth2_scheme = OAuth2PasswordBearer(tokenUrl="supabase", auto_error=False)
 
-def get_password_hash(password: str) -> str:
-    pwd_bytes = password.encode("utf-8")[:72]
-    salt = bcrypt.gensalt()
-    return bcrypt.hashpw(pwd_bytes, salt).decode("utf-8")
+# Cache JWKS client
+_jwks_client: Optional[PyJWKClient] = None
 
-def create_access_token(data: dict, expires_delta: Optional[timedelta] = None) -> str:
-    to_encode = data.copy()
-    if expires_delta:
-        expire = datetime.now(timezone.utc) + expires_delta
-    else:
-        expire = datetime.now(timezone.utc) + timedelta(minutes=settings.ACCESS_TOKEN_EXPIRE_MINUTES)
-    to_encode.update({"exp": expire})
-    encoded_jwt = jwt.encode(to_encode, settings.SECRET_KEY, algorithm=settings.ALGORITHM)
-    return encoded_jwt
 
-def get_current_user_optional(
+def get_jwks_client() -> PyJWKClient:
+    global _jwks_client
+    if _jwks_client is None:
+        _jwks_client = PyJWKClient(SUPABASE_JWKS_URL)
+    return _jwks_client
+
+
+async def get_current_user_optional(
     token: Optional[str] = Depends(oauth2_scheme),
     db: Session = Depends(get_db)
-):
-    from app.models.models import User
-    if not token or token == "undefined" or token == "null":
+) -> Optional[User]:
+    if not token:
         return None
 
     try:
-        payload = jwt.decode(token, settings.SECRET_KEY, algorithms=[settings.ALGORITHM])
-        email: str = payload.get("sub")
-        if email is None:
+        jwks_client = get_jwks_client()
+        signing_key = jwks_client.get_signing_key_from_jwt(token)
+        
+        payload = jwt.decode(
+            token,
+            signing_key.key,
+            algorithms=["RS256"],
+            audience="authenticated",
+            options={"verify_exp": True}
+        )
+        
+        # Supabase JWT contains user info in 'sub' (user ID) and 'email'
+        user_id = payload.get("sub")
+        email = payload.get("email")
+        
+        if not user_id:
             return None
+            
     except Exception:
         return None
 
-    user = db.query(User).filter(User.email == email).first()
-    if user is None:
-        return None
+    # Find or create local user record linked to Supabase user
+    user = db.query(User).filter(User.supabase_id == user_id).first()
+    
+    if not user and email:
+        # Create local user record on first login
+        user = User(
+            supabase_id=user_id,
+            email=email,
+            full_name=payload.get("user_metadata", {}).get("full_name", "User"),
+            role="student"
+        )
+        db.add(user)
+        db.commit()
+        db.refresh(user)
+        
+        # Create default profile
+        from app.models.models import Profile
+        profile = Profile(user_id=user.id)
+        db.add(profile)
+        db.commit()
+    
     return user
 
+
 def get_current_user(
-    user = Depends(get_current_user_optional)
-):
+    user: Optional[User] = Depends(get_current_user_optional)
+) -> User:
     if not user:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,

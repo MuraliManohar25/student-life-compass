@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { AIMessage } from '../types';
 import { INITIAL_AI_MESSAGES } from '../data/mockData';
 
@@ -20,8 +20,17 @@ export const CompassAIDrawer: React.FC<CompassAIDrawerProps> = ({
   const [activeFilter, setActiveFilter] = useState('All Modules');
   const [isThinking, setIsThinking] = useState(false);
   const [actionSuccessToast, setActionSuccessToast] = useState<string | null>(null);
+  const thinkingTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const toastTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   if (!isOpen) return null;
+
+  useEffect(() => {
+    return () => {
+      if (thinkingTimeoutRef.current) clearTimeout(thinkingTimeoutRef.current);
+      if (toastTimeoutRef.current) clearTimeout(toastTimeoutRef.current);
+    };
+  }, []);
 
   const quickPrompts = [
     'Quiet study cafes under ₹150 nearby',
@@ -45,16 +54,16 @@ export const CompassAIDrawer: React.FC<CompassAIDrawerProps> = ({
     setInputText('');
     setIsThinking(true);
 
-    setTimeout(() => {
+    if (thinkingTimeoutRef.current) clearTimeout(thinkingTimeoutRef.current);
+    thinkingTimeoutRef.current = setTimeout(() => {
       let replyText = '';
-      let richContent: AIMessage['richContent'] = undefined;
 
       if (text.toLowerCase().includes('cafe') || text.toLowerCase().includes('study')) {
         replyText =
           'Found 2 verified study spots fitting your ₹150 budget within 500m of North Campus: Green Leaf Cafe (quiet courtyard, filter coffee ₹40, student Wi-Fi) and Odegaard Reading Room (Free, power sockets at every desk).';
       } else if (text.toLowerCase().includes('cgpa') || text.toLowerCase().includes('dbms')) {
         replyText =
-          'Scoring 85+ on DBMS (4 credits) moves your cumulative GPA from 3.82 to 3.86, placing you solidly within the Dean’s List Distinction tier for Sem 6!';
+          'Scoring 85+ on DBMS (4 credits) moves your cumulative GPA from 3.82 to 3.86, placing you solidly within the Dean\'s List Distinction tier for Sem 6!';
       } else if (text.toLowerCase().includes('cloth') || text.toLowerCase().includes('800')) {
         replyText =
           'We surfaced the Formal Presentation Shirt (₹599) with 24% budget impact. Buying it leaves you with ₹1,901, well above your ₹1,500 emergency buffer.';
@@ -68,7 +77,7 @@ export const CompassAIDrawer: React.FC<CompassAIDrawerProps> = ({
         sender: 'ai',
         text: replyText,
         timestamp: 'Just now',
-        richContent
+        richContent: undefined
       };
 
       setMessages((prev) => [...prev, aiMsg]);
@@ -81,7 +90,8 @@ export const CompassAIDrawer: React.FC<CompassAIDrawerProps> = ({
       onAddToPlanner('DBMS: Relational Algebra & Normalization (Odegaard 2nd Floor)');
     }
     setActionSuccessToast('Added 3-Hour DBMS study session to your Saturday planner!');
-    setTimeout(() => setActionSuccessToast(null), 3000);
+    if (toastTimeoutRef.current) clearTimeout(toastTimeoutRef.current);
+    toastTimeoutRef.current = setTimeout(() => setActionSuccessToast(null), 3000);
   };
 
   return (
@@ -170,136 +180,6 @@ export const CompassAIDrawer: React.FC<CompassAIDrawerProps> = ({
               >
                 {msg.text && <p>{msg.text}</p>}
 
-                {/* Rich AI Synthesis Content Cards */}
-                {msg.richContent && (
-                  <div className="space-y-3 mt-3 pt-2 border-t border-outline-variant/20">
-                    {/* Card 1: Academic Priority */}
-                    {msg.richContent.academicPriority && (
-                      <div className="p-3 rounded-xl bg-surface-container-lowest shadow-xs space-y-2 border border-outline-variant/15">
-                        <div className="flex items-center justify-between">
-                          <span className="text-[11px] font-bold text-secondary uppercase tracking-wider">
-                            Academic Priority
-                          </span>
-                          <span className="px-2 py-0.5 rounded-full bg-secondary-fixed text-on-secondary-fixed text-[10px] font-bold">
-                            {msg.richContent.academicPriority.pyqWeight}
-                          </span>
-                        </div>
-                        <h4 className="text-[14px] font-bold text-on-surface">
-                          {msg.richContent.academicPriority.title}
-                        </h4>
-                        <p className="text-[11px] text-on-surface-variant">
-                          {msg.richContent.academicPriority.slot}
-                        </p>
-                        <div className="flex flex-wrap gap-1.5 pt-1">
-                          {msg.richContent.academicPriority.checkmarks.map((chk) => (
-                            <span
-                              key={chk}
-                              className="px-2 py-0.5 rounded-md bg-surface-container text-on-surface text-[10px] font-medium flex items-center gap-1"
-                            >
-                              <span className="material-symbols-outlined text-[12px] text-primary">
-                                check_circle
-                              </span>
-                              {chk}
-                            </span>
-                          ))}
-                        </div>
-                        <div className="flex gap-2 pt-1">
-                          <button
-                            onClick={handleAddStudyBlock}
-                            className="flex-1 py-1.5 px-2.5 rounded-lg bg-primary text-on-primary text-[11px] font-bold cursor-pointer hover:bg-primary-container"
-                            type="button"
-                          >
-                            + Add to Study Planner
-                          </button>
-                          {onOpenStudyGuide && (
-                            <button
-                              onClick={onOpenStudyGuide}
-                              className="py-1.5 px-2.5 rounded-lg bg-surface-container text-on-surface text-[11px] font-medium cursor-pointer hover:bg-surface-container-high"
-                              type="button"
-                            >
-                              Open Guide
-                            </button>
-                          )}
-                        </div>
-                      </div>
-                    )}
-
-                    {/* Card 2: Financial Reality Check */}
-                    {msg.richContent.financialCheck && (
-                      <div className="p-3 rounded-xl bg-surface-container-lowest shadow-xs space-y-2 border border-outline-variant/15">
-                        <div className="flex items-center justify-between">
-                          <span className="text-[11px] font-bold text-primary uppercase tracking-wider">
-                            Financial Reality Check
-                          </span>
-                          <span className="text-[11px] font-bold text-tertiary-container">
-                            Safe: {msg.richContent.financialCheck.safePace}
-                          </span>
-                        </div>
-                        <p className="text-[11px] text-on-surface-variant">
-                          {msg.richContent.financialCheck.warning}
-                        </p>
-
-                        <div className="p-2.5 rounded-lg bg-surface-container-low space-y-1">
-                          <div className="flex items-center justify-between">
-                            <span className="text-[11px] font-bold text-on-surface">
-                              {msg.richContent.financialCheck.recommendation.title}
-                            </span>
-                            <span className="px-1.5 py-0.2 rounded bg-tertiary-fixed text-on-tertiary-fixed text-[10px] font-bold">
-                              {msg.richContent.financialCheck.recommendation.savings}
-                            </span>
-                          </div>
-                          <p className="text-[11px] text-on-surface-variant">
-                            {msg.richContent.financialCheck.recommendation.body}
-                          </p>
-                          <span className="text-[10px] text-outline block pt-0.5">
-                            {msg.richContent.financialCheck.recommendation.distance}
-                          </span>
-                        </div>
-
-                        <button
-                          onClick={() =>
-                            alert('Opening Green Leaf verified student combo platter menu (₹120 thali)!')
-                          }
-                          className="w-full py-1.5 rounded-lg bg-surface-container-high text-on-surface text-[11px] font-semibold cursor-pointer hover:bg-surface-container-highest"
-                          type="button"
-                        >
-                          View Student Combo Menu
-                        </button>
-                      </div>
-                    )}
-
-                    {/* Card 3: Suggested Weekend Pace */}
-                    {msg.richContent.weekendPace && (
-                      <div className="p-3 rounded-xl bg-surface-container-lowest shadow-xs space-y-2 border border-outline-variant/15">
-                        <span className="text-[11px] font-bold text-on-surface-variant uppercase tracking-wider">
-                          Suggested Weekend Pace
-                        </span>
-                        <div className="space-y-1.5">
-                          {msg.richContent.weekendPace.map((item) => (
-                            <div
-                              key={item.time}
-                              className="p-2 rounded-lg bg-surface-container-low flex items-start gap-2 text-[11px]"
-                            >
-                              <span
-                                className={`w-2 h-2 rounded-full mt-1 shrink-0 ${
-                                  item.type === 'social'
-                                    ? 'bg-tertiary'
-                                    : item.type === 'academics'
-                                    ? 'bg-primary'
-                                    : 'bg-secondary'
-                                }`}
-                              />
-                              <div className="min-w-0">
-                                <span className="font-semibold text-on-surface block">{item.time}</span>
-                                <span className="text-on-surface-variant">{item.title}</span>
-                              </div>
-                            </div>
-                          ))}
-                        </div>
-                      </div>
-                    )}
-                  </div>
-                )}
               </div>
               <span className="text-[10px] text-outline mt-1 px-1">{msg.timestamp}</span>
             </div>

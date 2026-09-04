@@ -1,5 +1,6 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { ALEX_AVATAR_URL } from '../data/mockData';
+import { useAuth } from '../context/AuthContext';
 
 interface StudentProfileModalProps {
   isOpen: boolean;
@@ -16,16 +17,30 @@ export const StudentProfileModal: React.FC<StudentProfileModalProps> = ({
   const [stepByStepMode, setStepByStepMode] = useState(true);
   const [dailyReminder, setDailyReminder] = useState(true);
   const [savedToast, setSavedToast] = useState(false);
+  const timeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const { user, logout } = useAuth();
 
   if (!isOpen) return null;
 
+  const handleLogout = () => {
+    logout();
+    onClose();
+  };
+
   const handleSave = () => {
     setSavedToast(true);
-    setTimeout(() => {
+    if (timeoutRef.current) clearTimeout(timeoutRef.current);
+    timeoutRef.current = setTimeout(() => {
       setSavedToast(false);
       onClose();
     }, 1200);
   };
+
+  useEffect(() => {
+    return () => {
+      if (timeoutRef.current) clearTimeout(timeoutRef.current);
+    };
+  }, []);
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-xs p-4 overflow-y-auto">
@@ -50,7 +65,7 @@ export const StudentProfileModal: React.FC<StudentProfileModalProps> = ({
           <div className="relative">
             <img
               src={ALEX_AVATAR_URL}
-              alt="Alex Chen"
+              alt={user?.full_name || 'Student'}
               className="w-16 h-16 rounded-full object-cover shadow-xs ring-2 ring-indigo-200"
             />
             <span className="absolute bottom-0 right-0 w-4 h-4 rounded-full bg-emerald-500 ring-2 ring-white flex items-center justify-center">
@@ -62,13 +77,15 @@ export const StudentProfileModal: React.FC<StudentProfileModalProps> = ({
 
           <div className="min-w-0">
             <div className="flex items-center gap-1.5 flex-wrap">
-              <h3 className="text-base font-semibold text-[#1a1a1a] truncate">Alex Chen</h3>
+              <h3 className="text-base font-semibold text-[#1a1a1a] truncate">
+                {user?.full_name || 'Student'}
+              </h3>
               <span className="px-2 py-0.5 rounded bg-indigo-50 text-indigo-700 text-[10px] font-bold uppercase tracking-wider border border-indigo-200/50">
                 Verified
               </span>
             </div>
-            <p className="text-xs text-gray-500">3rd Year Computer Science</p>
-            <p className="text-xs text-indigo-600 font-semibold">UW Seattle • #UW-2022-8491</p>
+            <p className="text-xs text-gray-500 truncate">{user?.email || 'student@university.edu'}</p>
+            <p className="text-xs text-indigo-600 font-semibold">Profile details coming next</p>
           </div>
         </div>
 
@@ -221,6 +238,15 @@ export const StudentProfileModal: React.FC<StudentProfileModalProps> = ({
           >
             <span className="material-symbols-outlined text-[16px]">download</span>
             <span>Export Semester Cheatsheet PDF</span>
+          </button>
+
+          <button
+            onClick={handleLogout}
+            className="w-full py-2.5 rounded-xl bg-red-50 text-red-600 text-xs font-semibold hover:bg-red-100 transition-colors cursor-pointer flex items-center justify-center gap-1.5"
+            type="button"
+          >
+            <span className="material-symbols-outlined text-[16px]">logout</span>
+            <span>Sign Out</span>
           </button>
         </div>
       </div>

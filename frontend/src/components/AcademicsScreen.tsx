@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { AcademicSubTab, ScheduleBlock, TaskItem } from '../types';
 
 interface AcademicsScreenProps {
@@ -15,6 +15,11 @@ export const AcademicsScreen: React.FC<AcademicsScreenProps> = ({
   initialSubTab = 'sequencer'
 }) => {
   const [activeTab, setActiveTab] = useState<AcademicSubTab>(initialSubTab);
+
+  // Sync internal state with prop changes (fixes navigation from other tabs)
+  useEffect(() => {
+    setActiveTab(initialSubTab);
+  }, [initialSubTab]);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [showSolutionModal, setShowSolutionModal] = useState(false);
   const [activeDay, setActiveDay] = useState(16);

@@ -3,6 +3,16 @@ from sqlalchemy.orm import Session
 from app.core.database import get_db
 from app.core.security import get_current_user
 from app.models.models import User, Profile, Skill
+from app.schemas.schemas import (
+    CareerAnalyzeRequest,
+    CareerAnalyzeResponse,
+    CareerChatRequest,
+    CareerChatResponse,
+)
+from app.services.gemini_service import gemini_service
+
+router = APIRouter(prefix="/career", tags=["career"])
+
 
 def _get_user_profile_dict(profile: Profile, db: Session) -> dict:
     if not profile:
@@ -26,6 +36,7 @@ def _get_user_profile_dict(profile: Profile, db: Session) -> dict:
         "cohort": profile.cohort_standing
     }
 
+
 @router.post("/analyze", response_model=CareerAnalyzeResponse)
 def analyze_career(
     req: CareerAnalyzeRequest,
@@ -40,6 +51,7 @@ def analyze_career(
     profile_dict = _get_user_profile_dict(profile, db)
     result = gemini_service.analyze_career(req.target_role, profile_dict)
     return result
+
 
 @router.post("/chat", response_model=CareerChatResponse)
 def career_chat(
@@ -59,6 +71,7 @@ def career_chat(
     reply, _ = gemini_service.chat_dialogue(req.prompt, target_role, profile_data=profile_dict)
     return {"reply": reply, "source": "gemini-ai"}
 
+
 @router.get("/roadmap")
 def get_career_roadmap(
     current_user: User = Depends(get_current_user),
@@ -69,6 +82,7 @@ def get_career_roadmap(
     profile_dict = _get_user_profile_dict(profile, db)
     result = gemini_service.analyze_career(target_role, profile_dict)
     return result
+
 
 @router.get("/skill-gap")
 def get_skill_gap(
@@ -83,6 +97,7 @@ def get_skill_gap(
         "readiness_score": result.get("market_match_index", 75.0),
         "skill_gap": result.get("skill_gap", [])
     }
+
 
 @router.get("/resources")
 def get_learning_resources(

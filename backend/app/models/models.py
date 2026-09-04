@@ -1,18 +1,23 @@
-from datetime import datetime
+from datetime import datetime, timezone
 from sqlalchemy import Column, Integer, String, Float, Boolean, DateTime, ForeignKey, Text, JSON
 from sqlalchemy.orm import relationship
 from app.core.database import Base
+
+
+def utc_now():
+    return datetime.now(timezone.utc)
+
 
 class User(Base):
     __tablename__ = "users"
 
     id = Column(Integer, primary_key=True, index=True)
+    supabase_id = Column(String, unique=True, index=True, nullable=False)
     email = Column(String, unique=True, index=True, nullable=False)
-    hashed_password = Column(String, nullable=False)
     full_name = Column(String, nullable=False)
     role = Column(String, default="student")
-    created_at = Column(DateTime, default=datetime.utcnow)
-    updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+    created_at = Column(DateTime(timezone=True), default=utc_now)
+    updated_at = Column(DateTime(timezone=True), default=utc_now, onupdate=utc_now)
 
     profile = relationship("Profile", back_populates="user", uselist=False)
     career_goals = relationship("CareerGoal", back_populates="user")
@@ -25,6 +30,7 @@ class User(Base):
     placement_progress = relationship("PlacementProgress", back_populates="user")
     risk_predictions = relationship("RiskPrediction", back_populates="user")
     weekly_reports = relationship("WeeklyReport", back_populates="user")
+
 
 class Profile(Base):
     __tablename__ = "profiles"
@@ -42,11 +48,12 @@ class Profile(Base):
     resume_score = Column(Float, default=0.0)
     dsa_solved = Column(Integer, default=0)
     github_commits = Column(Integer, default=0)
-    created_at = Column(DateTime, default=datetime.utcnow)
-    updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+    created_at = Column(DateTime(timezone=True), default=utc_now)
+    updated_at = Column(DateTime(timezone=True), default=utc_now, onupdate=utc_now)
 
     user = relationship("User", back_populates="profile")
     skills = relationship("Skill", back_populates="profile", cascade="all, delete-orphan")
+
 
 class Skill(Base):
     __tablename__ = "skills"
@@ -54,11 +61,12 @@ class Skill(Base):
     id = Column(Integer, primary_key=True, index=True)
     profile_id = Column(Integer, ForeignKey("profiles.id"), nullable=False)
     name = Column(String, nullable=False)
-    proficiency_score = Column(Float, default=80.0) # 0-100
-    market_benchmark = Column(Float, default=85.0)  # 0-100
+    proficiency_score = Column(Float, default=80.0)
+    market_benchmark = Column(Float, default=85.0)
     category = Column(String, default="Technical")
 
     profile = relationship("Profile", back_populates="skills")
+
 
 class CareerGoal(Base):
     __tablename__ = "career_goals"
@@ -70,9 +78,10 @@ class CareerGoal(Base):
     required_skills = Column(JSON, default=list)
     roadmap_step = Column(JSON, default=dict)
     market_demand = Column(String, default="High")
-    created_at = Column(DateTime, default=datetime.utcnow)
+    created_at = Column(DateTime(timezone=True), default=utc_now)
 
     user = relationship("User", back_populates="career_goals")
+
 
 class Subject(Base):
     __tablename__ = "subjects"
@@ -88,6 +97,7 @@ class Subject(Base):
     user = relationship("User", back_populates="subjects")
     study_sessions = relationship("StudySession", back_populates="subject")
 
+
 class StudySession(Base):
     __tablename__ = "study_sessions"
 
@@ -96,14 +106,15 @@ class StudySession(Base):
     subject_id = Column(Integer, ForeignKey("subjects.id"), nullable=True)
     title = Column(String, nullable=False)
     room = Column(String, default="Hostel Room")
-    tag = Column(String, default="Lecture") # Lecture, Assignment, Practice, AI Mentor
-    status = Column(String, default="Upcoming") # Done, In Progress, Upcoming
-    scheduled_time = Column(String, nullable=False) # e.g. "09:00 AM" or ISO string
+    tag = Column(String, default="Lecture")
+    status = Column(String, default="Upcoming")
+    scheduled_time = Column(String, nullable=False)
     duration_minutes = Column(Integer, default=60)
-    created_at = Column(DateTime, default=datetime.utcnow)
+    created_at = Column(DateTime(timezone=True), default=utc_now)
 
     user = relationship("User", back_populates="study_sessions")
     subject = relationship("Subject", back_populates="study_sessions")
+
 
 class Expense(Base):
     __tablename__ = "expenses"
@@ -112,11 +123,12 @@ class Expense(Base):
     user_id = Column(Integer, ForeignKey("users.id"), nullable=False)
     title = Column(String, nullable=False)
     amount = Column(Float, nullable=False)
-    category = Column(String, nullable=False) # Food, Academics, Utilities, Leisure
-    date = Column(String, nullable=False) # "Today", "Yesterday", "Mar 20"
-    created_at = Column(DateTime, default=datetime.utcnow)
+    category = Column(String, nullable=False)
+    date = Column(String, nullable=False)
+    created_at = Column(DateTime(timezone=True), default=utc_now)
 
     user = relationship("User", back_populates="expenses")
+
 
 class BudgetPrediction(Base):
     __tablename__ = "budget_predictions"
@@ -128,9 +140,10 @@ class BudgetPrediction(Base):
     remaining_budget = Column(Float, default=1640.0)
     daily_cap = Column(Float, default=200.0)
     suggestions = Column(JSON, default=list)
-    forecast_date = Column(DateTime, default=datetime.utcnow)
+    forecast_date = Column(DateTime(timezone=True), default=utc_now)
 
     user = relationship("User", back_populates="budget_predictions")
+
 
 class Project(Base):
     __tablename__ = "projects"
@@ -146,6 +159,7 @@ class Project(Base):
 
     user = relationship("User", back_populates="projects")
 
+
 class Notification(Base):
     __tablename__ = "notifications"
 
@@ -153,11 +167,12 @@ class Notification(Base):
     user_id = Column(Integer, ForeignKey("users.id"), nullable=False)
     title = Column(String, nullable=False)
     message = Column(Text, nullable=False)
-    category = Column(String, default="General") # Academic, Budget, Exam, Placement
+    category = Column(String, default="General")
     is_read = Column(Boolean, default=False)
-    created_at = Column(DateTime, default=datetime.utcnow)
+    created_at = Column(DateTime(timezone=True), default=utc_now)
 
     user = relationship("User", back_populates="notifications")
+
 
 class PlacementProgress(Base):
     __tablename__ = "placement_progress"
@@ -167,26 +182,28 @@ class PlacementProgress(Base):
     company = Column(String, nullable=False)
     role = Column(String, nullable=False)
     match_percentage = Column(Float, default=85.0)
-    status = Column(String, default="Applied") # Applied, Resume Screened, Interviewing, Offered
+    status = Column(String, default="Applied")
     resume_score = Column(Float, default=88.0)
-    created_at = Column(DateTime, default=datetime.utcnow)
+    created_at = Column(DateTime(timezone=True), default=utc_now)
 
     user = relationship("User", back_populates="placement_progress")
+
 
 class RiskPrediction(Base):
     __tablename__ = "risk_predictions"
 
     id = Column(Integer, primary_key=True, index=True)
     user_id = Column(Integer, ForeignKey("users.id"), nullable=False)
-    burnout_risk_score = Column(Float, default=62.0) # 0-100
-    risk_level = Column(String, default="Moderate") # Low, Moderate, High
+    burnout_risk_score = Column(Float, default=62.0)
+    risk_level = Column(String, default="Moderate")
     workload_density = Column(Float, default=68.0)
     sleep_deprivation = Column(Boolean, default=False)
     peak_in_hours = Column(Integer, default=48)
     recommendations = Column(JSON, default=list)
-    predicted_at = Column(DateTime, default=datetime.utcnow)
+    predicted_at = Column(DateTime(timezone=True), default=utc_now)
 
     user = relationship("User", back_populates="risk_predictions")
+
 
 class WeeklyReport(Base):
     __tablename__ = "weekly_reports"
@@ -200,6 +217,6 @@ class WeeklyReport(Base):
     monthly_runway_days = Column(Integer, default=22)
     sleep_avg = Column(Float, default=6.2)
     ai_synthesis = Column(Text, nullable=True)
-    created_at = Column(DateTime, default=datetime.utcnow)
+    created_at = Column(DateTime(timezone=True), default=utc_now)
 
     user = relationship("User", back_populates="weekly_reports")
