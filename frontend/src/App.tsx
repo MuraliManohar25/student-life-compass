@@ -12,6 +12,7 @@ import {
   INITIAL_STUDENT_SPOTS
 } from './data/mockData';
 import { Header } from './components/Header';
+import { Sidebar } from './components/Sidebar';
 import { BottomNav } from './components/BottomNav';
 import { CompassAIFAB } from './components/CompassAIFAB';
 import { HomeScreen } from './components/HomeScreen';
@@ -76,8 +77,17 @@ export default function App() {
   };
 
   return (
-    <div className="min-h-screen bg-surface text-on-surface flex flex-col font-sans selection:bg-primary-fixed selection:text-on-primary-fixed">
-      {/* Fixed Sticky Header */}
+    <div className="min-h-screen bg-surface text-on-surface flex flex-col lg:flex-row font-sans selection:bg-primary-fixed selection:text-on-primary-fixed">
+      {/* Desktop Sidebar Navigation */}
+      <Sidebar
+        currentTab={currentTab}
+        onSelectTab={(tab) => setCurrentTab(tab)}
+        onOpenSearch={() => setIsSearchOpen(true)}
+        onOpenNotifications={() => setIsNotificationsOpen(true)}
+        onOpenProfile={() => setIsProfileOpen(true)}
+      />
+
+      {/* Mobile/Tablet Top Sticky Header */}
       <Header
         currentTab={currentTab}
         onOpenSearch={() => setIsSearchOpen(true)}
@@ -86,40 +96,42 @@ export default function App() {
       />
 
       {/* Main Viewport Container */}
-      <main className="flex-1 w-full pt-18 pb-24 overflow-x-hidden">
-        {currentTab === 'home' && (
-          <HomeScreen
-            tasks={tasks}
-            onToggleTask={handleToggleTask}
-            onNavigateTab={(tab) => setCurrentTab(tab)}
-            onOpenStudyGuide={handleOpenStudyGuide}
-            spots={spots}
-          />
-        )}
+      <main className="flex-1 w-full pt-18 lg:pt-6 pb-24 lg:pb-12 overflow-x-hidden min-h-screen">
+        <div className="max-w-[1400px] mx-auto w-full">
+          {currentTab === 'home' && (
+            <HomeScreen
+              tasks={tasks}
+              onToggleTask={handleToggleTask}
+              onNavigateTab={(tab) => setCurrentTab(tab)}
+              onOpenStudyGuide={handleOpenStudyGuide}
+              spots={spots}
+            />
+          )}
 
-        {currentTab === 'academics' && (
-          <AcademicsScreen
-            tasks={tasks}
-            schedule={schedule}
-            onAddScheduleItem={handleAddScheduleItem}
-            initialSubTab={academicSubTab}
-          />
-        )}
+          {currentTab === 'academics' && (
+            <AcademicsScreen
+              tasks={tasks}
+              schedule={schedule}
+              onAddScheduleItem={handleAddScheduleItem}
+              initialSubTab={academicSubTab}
+            />
+          )}
 
-        {currentTab === 'finance' && (
-          <FinanceScreen
-            shoppingItems={shoppingItems}
-            onToggleShoppingItem={handleToggleShoppingItem}
-          />
-        )}
+          {currentTab === 'finance' && (
+            <FinanceScreen
+              shoppingItems={shoppingItems}
+              onToggleShoppingItem={handleToggleShoppingItem}
+            />
+          )}
 
-        {currentTab === 'explore' && (
-          <ExploreScreen spots={spots} />
-        )}
+          {currentTab === 'explore' && (
+            <ExploreScreen spots={spots} />
+          )}
 
-        {currentTab === 'insights' && (
-          <InsightsScreen onOpenStudyGuide={handleOpenStudyGuide} />
-        )}
+          {currentTab === 'insights' && (
+            <InsightsScreen onOpenStudyGuide={handleOpenStudyGuide} />
+          )}
+        </div>
       </main>
 
       {/* Floating Action Button: Ask Compass AI */}

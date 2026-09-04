@@ -9,7 +9,7 @@ export const CompassAIFAB: React.FC<CompassAIFABProps> = ({ onClick, isOpen }) =
   if (isOpen) return null;
 
   return (
-    <aside className="fixed bottom-20 right-4 z-40">
+    <aside className="fixed bottom-20 lg:bottom-6 right-4 lg:right-8 z-40">
       <button
         onClick={onClick}
         className="flex items-center gap-2 pl-3.5 pr-4 h-11 rounded-xl bg-indigo-600 text-white shadow-md hover:bg-indigo-700 transition-all duration-200 active:scale-95 cursor-pointer group border border-indigo-500/30"

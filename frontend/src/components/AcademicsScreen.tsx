@@ -47,9 +47,9 @@ export const AcademicsScreen: React.FC<AcademicsScreenProps> = ({
   };
 
   return (
-    <div className="flex flex-col w-full px-4 space-y-4 max-w-max-content-width mx-auto pb-4 pt-1">
+    <div className="flex flex-col w-full px-4 sm:px-6 lg:px-8 space-y-6 max-w-[1400px] mx-auto pb-6 pt-1 lg:pt-2">
       {/* Sub-Header & Segmented Hub Navigation Bar */}
-      <div className="w-full overflow-x-auto no-scrollbar -mx-4 px-4 py-1">
+      <div className="w-full overflow-x-auto no-scrollbar -mx-4 px-4 py-1 sm:mx-0 sm:px-0">
         <div className="flex items-center gap-1 p-1 bg-gray-100 rounded-xl min-w-max border border-gray-200">
           <button
             onClick={() => setActiveTab('planner')}
@@ -101,504 +101,510 @@ export const AcademicsScreen: React.FC<AcademicsScreenProps> = ({
 
       {/* VIEW 1: SMART SEQUENCER ("What Should I Do First?") */}
       {activeTab === 'sequencer' && (
-        <div className="space-y-4">
-          {/* Ambient Hero Header & Progress Ring Status Card */}
-          <div className="relative overflow-hidden rounded-2xl bg-white shadow-xs p-6 border border-gray-200">
-            <div className="flex items-center justify-between gap-3">
-              <div className="space-y-1 min-w-0">
-                <div className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded bg-indigo-50 text-indigo-700 text-[10px] font-bold uppercase tracking-wider border border-indigo-200/50">
-                  <span className="w-1.5 h-1.5 rounded-full bg-indigo-600 animate-pulse"></span>
-                  <span>Mid-Semester Window</span>
+        <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
+          {/* Left Column: Progress Hero & Tasks */}
+          <div className="lg:col-span-7 space-y-6">
+            {/* Ambient Hero Header & Progress Ring Status Card */}
+            <div className="relative overflow-hidden rounded-2xl bg-white shadow-xs p-6 border border-gray-200">
+              <div className="flex items-center justify-between gap-3">
+                <div className="space-y-1 min-w-0">
+                  <div className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded bg-indigo-50 text-indigo-700 text-[10px] font-bold uppercase tracking-wider border border-indigo-200/50">
+                    <span className="w-1.5 h-1.5 rounded-full bg-indigo-600 animate-pulse"></span>
+                    <span>Mid-Semester Window</span>
+                  </div>
+                  <h2 className="text-xl font-semibold text-[#1a1a1a] tracking-tight pt-0.5">
+                    Mid-Sem in 14 Days
+                  </h2>
+                  <p className="text-xs text-gray-500">
+                    Syllabus pacing is 68% optimal. 4 core milestones remaining.
+                  </p>
                 </div>
-                <h2 className="text-xl font-semibold text-[#1a1a1a] tracking-tight pt-0.5">
-                  Mid-Sem in 14 Days
-                </h2>
-                <p className="text-xs text-gray-500">
-                  Syllabus pacing is 68% optimal. 4 core milestones remaining.
+
+                {/* Ring chart SVG with Delight badge */}
+                <div className="relative flex-shrink-0 w-16 h-16 flex items-center justify-center">
+                  <svg className="w-full h-full -rotate-90" viewBox="0 0 36 36">
+                    <path
+                      className="text-gray-100"
+                      d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831"
+                      fill="none"
+                      stroke="currentColor"
+                      strokeWidth="3.5"
+                    />
+                    <path
+                      className="text-indigo-600"
+                      d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831"
+                      fill="none"
+                      stroke="currentColor"
+                      strokeDasharray="68, 100"
+                      strokeLinecap="round"
+                      strokeWidth="3.5"
+                    />
+                  </svg>
+                  <div className="absolute flex flex-col items-center justify-center">
+                    <span className="text-xs font-bold text-indigo-600">68%</span>
+                    <span className="text-[8px] text-gray-400 font-bold uppercase tracking-wider">
+                      Ready
+                    </span>
+                  </div>
+                </div>
+              </div>
+
+              {/* Micro streak reminder */}
+              <div className="mt-4 pt-1 flex items-center justify-between text-xs bg-gray-50 border border-gray-100 rounded-xl px-3.5 py-2">
+                <div className="flex items-center gap-1.5">
+                  <span className="material-symbols-outlined text-amber-600 text-[18px]">
+                    local_fire_department
+                  </span>
+                  <span className="text-[#1a1a1a] font-medium">5-day revision streak</span>
+                </div>
+                <span className="text-indigo-600 font-semibold">+120 XP earned</span>
+              </div>
+            </div>
+
+            {/* SECTION 1: SMART TASK SEQUENCER */}
+            <section className="space-y-3">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-2 min-w-0">
+                  <span className="w-2 h-2 rounded-full bg-secondary"></span>
+                  <h3 className="text-[17px] font-bold text-on-surface">What Should I Do First?</h3>
+                </div>
+                <span className="text-[11px] text-primary font-bold">AI Prioritized</span>
+              </div>
+
+              {/* Explanatory Pill / Prompt Assist */}
+              <div className="flex items-start gap-2.5 p-3 rounded-xl bg-surface-container text-on-surface-variant">
+                <span className="material-symbols-outlined text-secondary text-[20px] mt-0.5">
+                  auto_awesome
+                </span>
+                <p className="text-[12px] leading-relaxed">
+                  Ordered dynamically by <span className="font-semibold text-on-surface">deadline proximity</span>,{' '}
+                  <span className="font-semibold text-on-surface">exam weightage (40%)</span>, and active focus energy.
                 </p>
               </div>
 
-              {/* Ring chart SVG with Delight badge */}
-              <div className="relative flex-shrink-0 w-16 h-16 flex items-center justify-center">
-                <svg className="w-full h-full -rotate-90" viewBox="0 0 36 36">
-                  <path
-                    className="text-gray-100"
-                    d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831"
-                    fill="none"
-                    stroke="currentColor"
-                    strokeWidth="3.5"
-                  />
-                  <path
-                    className="text-indigo-600"
-                    d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831"
-                    fill="none"
-                    stroke="currentColor"
-                    strokeDasharray="68, 100"
-                    strokeLinecap="round"
-                    strokeWidth="3.5"
-                  />
-                </svg>
-                <div className="absolute flex flex-col items-center justify-center">
-                  <span className="text-xs font-bold text-indigo-600">68%</span>
-                  <span className="text-[8px] text-gray-400 font-bold uppercase tracking-wider">
-                    Ready
-                  </span>
+              {/* Sequenced Tasks Stack */}
+              <div className="space-y-2.5">
+                {/* Task 1: High Priority (Active focus) */}
+                <div className="p-4 rounded-2xl bg-surface-container-lowest shadow-sm flex flex-col space-y-2.5 transition-all border border-outline-variant/15 hover:border-primary/30">
+                  <div className="flex items-start justify-between gap-2">
+                    <div className="space-y-1 min-w-0">
+                      <div className="flex items-center gap-2 flex-wrap">
+                        <span className="px-2 py-0.5 rounded-full bg-error-container text-on-error-container text-[11px] font-bold">
+                          High Priority
+                        </span>
+                        <span className="text-[11px] text-error font-medium flex items-center gap-1">
+                          <span className="material-symbols-outlined text-[14px]">timer</span> Due Tomorrow
+                        </span>
+                        <span className="text-[11px] text-on-surface-variant flex items-center gap-1">
+                          <span className="material-symbols-outlined text-[14px]">schedule</span> 2h est.
+                        </span>
+                      </div>
+                      <h4 className="text-[16px] font-bold text-on-surface pt-0.5">
+                        DBMS Assignment: Relational Algebra
+                      </h4>
+                      <p className="text-[12px] text-on-surface-variant">
+                        Nearest deadline + 15% overall course weight. Unlocks SQL Labs.
+                      </p>
+                    </div>
+                    <div className="w-9 h-9 rounded-full bg-primary-fixed flex items-center justify-center text-primary font-bold text-[13px] shrink-0">
+                      #1
+                    </div>
+                  </div>
+
+                  <div className="pt-1 flex items-center gap-2">
+                    <button
+                      onClick={() => setActiveTab('stepguide')}
+                      className="flex-1 py-2 px-3 rounded-xl bg-primary-container text-on-primary text-[13px] font-semibold shadow-xs hover:opacity-95 transition-all flex items-center justify-center gap-1.5 cursor-pointer"
+                      type="button"
+                    >
+                      <span className="material-symbols-outlined text-[18px]">play_circle</span>
+                      Accept & Start (2h)
+                    </button>
+                    <button
+                      onClick={() => setIsModalOpen(true)}
+                      className="py-2 px-3 rounded-xl bg-surface-container text-on-surface text-[13px] font-medium hover:bg-surface-container-high transition-colors flex items-center gap-1 cursor-pointer"
+                      type="button"
+                    >
+                      <span className="material-symbols-outlined text-[18px]">update</span>
+                      Reschedule
+                    </button>
+                  </div>
+                </div>
+
+                {/* Task 2: Medium Priority */}
+                <div
+                  onClick={() => setActiveTab('pyqs')}
+                  className="p-4 rounded-2xl bg-surface-container-lowest shadow-sm flex items-center justify-between gap-3 cursor-pointer hover:border-primary/30 border border-outline-variant/15 transition-all"
+                >
+                  <div className="space-y-1 min-w-0">
+                    <div className="flex items-center gap-2">
+                      <span className="px-2 py-0.5 rounded-full bg-surface-container-highest text-on-primary-fixed-variant text-[11px] font-bold">
+                        Medium Priority
+                      </span>
+                      <span className="text-[11px] text-on-surface-variant">Exam in 4 days</span>
+                      <span className="text-[11px] text-on-surface-variant">1.5h</span>
+                    </div>
+                    <h4 className="text-[13px] font-bold text-on-surface">
+                      Calculus III: Vector Integrals Revision
+                    </h4>
+                    <p className="text-[12px] text-on-surface-variant">
+                      Calculus III PYQ priority • High occurrence in Section B
+                    </p>
+                  </div>
+                  <button
+                    className="w-8 h-8 rounded-full bg-surface-container flex items-center justify-center text-on-surface-variant hover:text-primary transition-colors shrink-0"
+                    type="button"
+                  >
+                    <span className="material-symbols-outlined text-[20px]">chevron_right</span>
+                  </button>
+                </div>
+
+                {/* Task 3: Python DSA */}
+                <div className="p-4 rounded-2xl bg-surface-container-lowest shadow-sm flex items-center justify-between gap-3 border border-outline-variant/15">
+                  <div className="space-y-1 min-w-0">
+                    <div className="flex items-center gap-2">
+                      <span className="px-2 py-0.5 rounded-full bg-surface-container-high text-on-surface-variant text-[11px] font-medium">
+                        Routine
+                      </span>
+                      <span className="text-[11px] text-on-surface-variant">Due in 5 days</span>
+                      <span className="text-[11px] text-on-surface-variant">1h</span>
+                    </div>
+                    <h4 className="text-[13px] font-bold text-on-surface">
+                      Python Data Structures Practice
+                    </h4>
+                    <p className="text-[12px] text-on-surface-variant">
+                      Trees & Graphs review with 4 mock platform challenges
+                    </p>
+                  </div>
+                  <button
+                    className="w-8 h-8 rounded-full bg-surface-container flex items-center justify-center text-on-surface-variant hover:text-primary transition-colors shrink-0"
+                    type="button"
+                  >
+                    <span className="material-symbols-outlined text-[20px]">chevron_right</span>
+                  </button>
                 </div>
               </div>
-            </div>
+            </section>
 
-            {/* Micro streak reminder */}
-            <div className="mt-4 pt-1 flex items-center justify-between text-xs bg-gray-50 border border-gray-100 rounded-xl px-3.5 py-2">
-              <div className="flex items-center gap-1.5">
-                <span className="material-symbols-outlined text-amber-600 text-[18px]">
-                  local_fire_department
+            {/* Delightful Study Nudge Card */}
+            <div className="relative overflow-hidden rounded-2xl bg-surface-container p-4 flex items-center gap-4 border border-outline-variant/15">
+              <div className="space-y-1 min-w-0 flex-1">
+                <span className="text-[11px] font-bold uppercase tracking-wider text-secondary">
+                  Study Buddy AI
                 </span>
-                <span className="text-[#1a1a1a] font-medium">5-day revision streak</span>
+                <h4 className="text-[17px] font-bold text-on-surface">
+                  Ready for a 25-min Pomodoro?
+                </h4>
+                <p className="text-[12px] text-on-surface-variant">
+                  We queued 4 practice questions from DBMS Unit 3 based on your weakest topic.
+                </p>
+                <div className="pt-1">
+                  <button
+                    onClick={() => setActiveTab('stepguide')}
+                    className="px-3 py-1.5 rounded-xl bg-secondary text-on-secondary text-[13px] font-medium inline-flex items-center gap-1 shadow-xs active:scale-95 transition-transform cursor-pointer"
+                    type="button"
+                  >
+                    <span className="material-symbols-outlined text-[16px]">timer</span>
+                    <span>Launch Focus Session</span>
+                  </button>
+                </div>
               </div>
-              <span className="text-indigo-600 font-semibold">+120 XP earned</span>
+              <div className="w-20 h-20 rounded-2xl overflow-hidden shrink-0 shadow-sm">
+                <img
+                  className="w-full h-full object-cover"
+                  src="https://lh3.googleusercontent.com/aida-public/AB6AXuBDXlgWjSCgkyfTQ8zMmWhzBfjt74DvNoRekncLL_vLZF5HOr-iwu1eDxxMFiI5v0jvE9yQOcfGEHvnEnwfTNujWk7G3UY0d2yeOXhwY-4Jj6o2E_cQqb0U9hFFIDNxk8MPCmJsWPdI0XLw8dv0K1BFoDOyCxGfppQjoI-Ofm3Aj2eNPyRPdZVoL1HCOA5R2GLaIKNJkNAU1ovNK9F_wjzz7wm6cuDRwIy0bCnBh23BwWaOZIUQ3ihy"
+                  alt="Cozy study desk"
+                />
+              </div>
             </div>
           </div>
 
-          {/* SECTION 1: SMART TASK SEQUENCER */}
-          <section className="space-y-3">
-            <div className="flex items-center justify-between">
-              <div className="flex items-center gap-2 min-w-0">
-                <span className="w-2 h-2 rounded-full bg-secondary"></span>
-                <h3 className="text-[17px] font-bold text-on-surface">What Should I Do First?</h3>
-              </div>
-              <span className="text-[11px] text-primary font-bold">AI Prioritized</span>
-            </div>
-
-            {/* Explanatory Pill / Prompt Assist */}
-            <div className="flex items-start gap-2.5 p-3 rounded-xl bg-surface-container text-on-surface-variant">
-              <span className="material-symbols-outlined text-secondary text-[20px] mt-0.5">
-                auto_awesome
-              </span>
-              <p className="text-[12px] leading-relaxed">
-                Ordered dynamically by <span className="font-semibold text-on-surface">deadline proximity</span>,{' '}
-                <span className="font-semibold text-on-surface">exam weightage (40%)</span>, and active focus energy.
-              </p>
-            </div>
-
-            {/* Sequenced Tasks Stack */}
-            <div className="space-y-2.5">
-              {/* Task 1: High Priority (Active focus) */}
-              <div className="p-4 rounded-2xl bg-surface-container-lowest shadow-sm flex flex-col space-y-2.5 transition-all border border-outline-variant/15 hover:border-primary/30">
-                <div className="flex items-start justify-between gap-2">
-                  <div className="space-y-1 min-w-0">
-                    <div className="flex items-center gap-2 flex-wrap">
-                      <span className="px-2 py-0.5 rounded-full bg-error-container text-on-error-container text-[11px] font-bold">
-                        High Priority
-                      </span>
-                      <span className="text-[11px] text-error font-medium flex items-center gap-1">
-                        <span className="material-symbols-outlined text-[14px]">timer</span> Due Tomorrow
-                      </span>
-                      <span className="text-[11px] text-on-surface-variant flex items-center gap-1">
-                        <span className="material-symbols-outlined text-[14px]">schedule</span> 2h est.
-                      </span>
-                    </div>
-                    <h4 className="text-[16px] font-bold text-on-surface pt-0.5">
-                      DBMS Assignment: Relational Algebra
-                    </h4>
-                    <p className="text-[12px] text-on-surface-variant">
-                      Nearest deadline + 15% overall course weight. Unlocks SQL Labs.
-                    </p>
-                  </div>
-                  <div className="w-9 h-9 rounded-full bg-primary-fixed flex items-center justify-center text-primary font-bold text-[13px] shrink-0">
-                    #1
-                  </div>
-                </div>
-
-                <div className="pt-1 flex items-center gap-2">
-                  <button
-                    onClick={() => setActiveTab('stepguide')}
-                    className="flex-1 py-2 px-3 rounded-xl bg-primary-container text-on-primary text-[13px] font-semibold shadow-xs hover:opacity-95 transition-all flex items-center justify-center gap-1.5 cursor-pointer"
-                    type="button"
-                  >
-                    <span className="material-symbols-outlined text-[18px]">play_circle</span>
-                    Accept & Start (2h)
-                  </button>
-                  <button
-                    onClick={() => setIsModalOpen(true)}
-                    className="py-2 px-3 rounded-xl bg-surface-container text-on-surface text-[13px] font-medium hover:bg-surface-container-high transition-colors flex items-center gap-1 cursor-pointer"
-                    type="button"
-                  >
-                    <span className="material-symbols-outlined text-[18px]">update</span>
-                    Reschedule
-                  </button>
-                </div>
-              </div>
-
-              {/* Task 2: Medium Priority */}
-              <div
-                onClick={() => setActiveTab('pyqs')}
-                className="p-4 rounded-2xl bg-surface-container-lowest shadow-sm flex items-center justify-between gap-3 cursor-pointer hover:border-primary/30 border border-outline-variant/15 transition-all"
-              >
-                <div className="space-y-1 min-w-0">
-                  <div className="flex items-center gap-2">
-                    <span className="px-2 py-0.5 rounded-full bg-surface-container-highest text-on-primary-fixed-variant text-[11px] font-bold">
-                      Medium Priority
-                    </span>
-                    <span className="text-[11px] text-on-surface-variant">Exam in 4 days</span>
-                    <span className="text-[11px] text-on-surface-variant">1.5h</span>
-                  </div>
-                  <h4 className="text-[13px] font-bold text-on-surface">
-                    Calculus III: Vector Integrals Revision
-                  </h4>
-                  <p className="text-[12px] text-on-surface-variant">
-                    Calculus III PYQ priority • High occurrence in Section B
-                  </p>
-                </div>
-                <button
-                  className="w-8 h-8 rounded-full bg-surface-container flex items-center justify-center text-on-surface-variant hover:text-primary transition-colors shrink-0"
-                  type="button"
-                >
-                  <span className="material-symbols-outlined text-[20px]">chevron_right</span>
-                </button>
-              </div>
-
-              {/* Task 3: Python DSA */}
-              <div className="p-4 rounded-2xl bg-surface-container-lowest shadow-sm flex items-center justify-between gap-3 border border-outline-variant/15">
-                <div className="space-y-1 min-w-0">
-                  <div className="flex items-center gap-2">
-                    <span className="px-2 py-0.5 rounded-full bg-surface-container-high text-on-surface-variant text-[11px] font-medium">
-                      Routine
-                    </span>
-                    <span className="text-[11px] text-on-surface-variant">Due in 5 days</span>
-                    <span className="text-[11px] text-on-surface-variant">1h</span>
-                  </div>
-                  <h4 className="text-[13px] font-bold text-on-surface">
-                    Python Data Structures Practice
-                  </h4>
-                  <p className="text-[12px] text-on-surface-variant">
-                    Trees & Graphs review with 4 mock platform challenges
-                  </p>
-                </div>
-                <button
-                  className="w-8 h-8 rounded-full bg-surface-container flex items-center justify-center text-on-surface-variant hover:text-primary transition-colors shrink-0"
-                  type="button"
-                >
-                  <span className="material-symbols-outlined text-[20px]">chevron_right</span>
-                </button>
-              </div>
-            </div>
-          </section>
-
-          {/* Previous Year Papers Preview & Topic Analysis */}
-          <section className="space-y-3">
-            <div className="flex items-center justify-between">
-              <div className="flex items-center gap-2 min-w-0">
-                <span className="w-2 h-2 rounded-full bg-primary"></span>
-                <h3 className="text-[17px] font-bold text-on-surface">Previous Year Papers & Trends</h3>
-              </div>
-              <button
-                onClick={() => setActiveTab('pyqs')}
-                className="text-[11px] text-primary font-bold hover:underline cursor-pointer"
-                type="button"
-              >
-                View All (42)
-              </button>
-            </div>
-
-            <div className="p-4 rounded-2xl bg-surface-container-lowest shadow-sm space-y-3.5 border border-outline-variant/15">
-              {/* Breadcrumb Dropdown Mock Selector */}
-              <div className="flex items-center gap-1.5 overflow-x-auto pb-1 no-scrollbar text-[11px] font-semibold">
-                <button className="px-2.5 py-1.5 rounded-lg bg-surface-container-high text-on-surface flex items-center gap-1">
-                  <span>CS Eng</span>
-                  <span className="material-symbols-outlined text-[14px]">arrow_drop_down</span>
-                </button>
-                <span className="text-outline-variant font-bold">/</span>
-                <button className="px-2.5 py-1.5 rounded-lg bg-surface-container-high text-on-surface flex items-center gap-1">
-                  <span>Sem 6</span>
-                  <span className="material-symbols-outlined text-[14px]">arrow_drop_down</span>
-                </button>
-                <span className="text-outline-variant font-bold">/</span>
-                <button className="px-2.5 py-1.5 rounded-lg bg-surface-container-high text-on-surface flex items-center gap-1 font-bold">
-                  <span>DBMS</span>
-                  <span className="material-symbols-outlined text-[14px]">arrow_drop_down</span>
-                </button>
-                <span className="text-outline-variant font-bold">/</span>
-                <button className="px-2.5 py-1.5 rounded-lg bg-primary-fixed text-on-primary-fixed font-bold flex items-center gap-1">
-                  <span>2023 End-Sem</span>
-                  <span className="material-symbols-outlined text-[14px]">check</span>
-                </button>
-              </div>
-
-              {/* Topic Frequency Analytic Bar Chart */}
-              <div className="space-y-2 pt-1">
-                <div className="flex items-center justify-between text-on-surface-variant text-[11px]">
-                  <span className="font-bold text-on-surface flex items-center gap-1">
-                    <span className="material-symbols-outlined text-secondary text-[16px]">insights</span>
-                    Topic Recurrence (Last 5 Years)
-                  </span>
-                  <span>Exam Probability</span>
-                </div>
-
-                <div className="space-y-2.5 pt-1">
-                  {/* Item 1: Normalization */}
-                  <div className="space-y-1">
-                    <div className="flex justify-between text-[11px]">
-                      <span className="font-medium text-on-surface">Normalization (3NF / BCNF)</span>
-                      <span className="font-bold text-primary">95%</span>
-                    </div>
-                    <div className="w-full h-2 rounded-full bg-surface-container-high overflow-hidden">
-                      <div className="h-full bg-primary rounded-full" style={{ width: '95%' }}></div>
-                    </div>
-                  </div>
-
-                  {/* Item 2: Transactions */}
-                  <div className="space-y-1">
-                    <div className="flex justify-between text-[11px]">
-                      <span className="font-medium text-on-surface">Transactions & Concurrency Control</span>
-                      <span className="font-bold text-primary">82%</span>
-                    </div>
-                    <div className="w-full h-2 rounded-full bg-surface-container-high overflow-hidden">
-                      <div className="h-full bg-primary-container rounded-full" style={{ width: '82%' }}></div>
-                    </div>
-                  </div>
-
-                  {/* Item 3: SQL Queries */}
-                  <div className="space-y-1">
-                    <div className="flex justify-between text-[11px]">
-                      <span className="font-medium text-on-surface">Complex Joins & Subqueries</span>
-                      <span className="font-bold text-primary">75%</span>
-                    </div>
-                    <div className="w-full h-2 rounded-full bg-surface-container-high overflow-hidden">
-                      <div className="h-full bg-secondary-container rounded-full" style={{ width: '75%' }}></div>
-                    </div>
-                  </div>
-
-                  {/* Item 4: Indexing */}
-                  <div className="space-y-1">
-                    <div className="flex justify-between text-[11px]">
-                      <span className="font-medium text-on-surface">B-Trees & Hash Indexing</span>
-                      <span className="font-semibold text-on-surface-variant">50%</span>
-                    </div>
-                    <div className="w-full h-2 rounded-full bg-surface-container-high overflow-hidden">
-                      <div className="h-full bg-outline-variant rounded-full" style={{ width: '50%' }}></div>
-                    </div>
-                  </div>
-                </div>
-              </div>
-
-              {/* PYQ Document Actions Strip */}
-              <div className="pt-2 flex items-center justify-between">
-                <div className="flex items-center gap-2">
-                  <button
-                    onClick={() => setActiveTab('stepguide')}
-                    className="py-1.5 px-3 rounded-lg bg-primary-container text-on-primary text-[13px] font-semibold flex items-center gap-1.5 shadow-xs active:scale-95 transition-transform cursor-pointer"
-                    type="button"
-                  >
-                    <span className="material-symbols-outlined text-[18px]">visibility</span>
-                    <span>View PDF</span>
-                  </button>
-                  <button
-                    onClick={() => alert('Downloading official 2023 End-Sem solved question paper (PDF 4.2 MB)...')}
-                    className="py-1.5 px-3 rounded-lg bg-surface-container text-on-surface text-[13px] font-medium flex items-center gap-1.5 hover:bg-surface-container-high transition-colors cursor-pointer"
-                    type="button"
-                  >
-                    <span className="material-symbols-outlined text-[18px]">download</span>
-                    <span>Download</span>
-                  </button>
-                </div>
-                <button
-                  onClick={() => alert('Bookmarked 2023 End-Sem paper for fast review!')}
-                  className="w-9 h-9 rounded-full bg-surface-container flex items-center justify-center text-on-surface-variant hover:text-primary transition-colors cursor-pointer"
-                  title="Bookmark Paper"
-                  type="button"
-                >
-                  <span className="material-symbols-outlined text-[20px]">bookmark_border</span>
-                </button>
-              </div>
-            </div>
-          </section>
-
-          {/* SECTION 3: CAREER COMPASS & MILESTONES */}
-          <section className="space-y-3">
-            <div className="flex items-center justify-between">
-              <div className="flex items-center gap-2 min-w-0">
-                <span className="w-2 h-2 rounded-full bg-tertiary-fixed-dim"></span>
-                <h3 className="text-[17px] font-bold text-on-surface">Career Compass & Milestones</h3>
-              </div>
-              <span className="text-[11px] text-tertiary font-bold">Backend Track</span>
-            </div>
-
-            {/* Roadmap Visual Node Path Card */}
-            <div className="p-4 rounded-2xl bg-surface-container-lowest shadow-sm space-y-3 border border-outline-variant/15">
+          {/* Right Column: PYQs Trends & Career Roadmap */}
+          <div className="lg:col-span-5 space-y-6">
+            {/* Previous Year Papers Preview & Topic Analysis */}
+            <section className="space-y-3">
               <div className="flex items-center justify-between">
-                <h4 className="text-[13px] font-bold text-on-surface">Target: Summer SWE '25</h4>
-                <span className="text-[11px] text-on-surface-variant">Step 2 of 4</span>
-              </div>
-
-              {/* Visual Node Path */}
-              <div className="relative py-2">
-                <div className="grid grid-cols-4 gap-2 text-center relative z-10">
-                  {/* Node 1: Completed */}
-                  <div className="flex flex-col items-center space-y-1">
-                    <div className="w-8 h-8 rounded-full bg-tertiary-container text-on-tertiary flex items-center justify-center shadow-xs">
-                      <span className="material-symbols-outlined text-[18px]">check</span>
-                    </div>
-                    <span className="text-[11px] font-bold text-on-surface">Skills</span>
-                    <span className="text-[10px] text-on-surface-variant leading-tight">Python, SQL</span>
-                  </div>
-
-                  {/* Node 2: In-Progress / Gap */}
-                  <div className="flex flex-col items-center space-y-1">
-                    <div className="w-8 h-8 rounded-full bg-primary-container text-on-primary flex items-center justify-center ring-2 ring-primary-fixed shadow-xs">
-                      <span className="material-symbols-outlined text-[18px]">lock_open</span>
-                    </div>
-                    <span className="text-[11px] font-bold text-primary">Skill Gap</span>
-                    <span className="text-[10px] text-on-surface-variant leading-tight">Docker, System</span>
-                  </div>
-
-                  {/* Node 3: Upcoming */}
-                  <div className="flex flex-col items-center space-y-1">
-                    <div className="w-8 h-8 rounded-full bg-surface-container-high text-on-surface-variant flex items-center justify-center">
-                      <span className="material-symbols-outlined text-[18px]">school</span>
-                    </div>
-                    <span className="text-[11px] font-medium text-on-surface-variant">Learning</span>
-                    <span className="text-[10px] text-on-surface-variant leading-tight">FastAPI Lab</span>
-                  </div>
-
-                  {/* Node 4: Target Goal */}
-                  <div className="flex flex-col items-center space-y-1">
-                    <div className="w-8 h-8 rounded-full bg-surface-container-high text-on-surface-variant flex items-center justify-center">
-                      <span className="material-symbols-outlined text-[18px]">rocket_launch</span>
-                    </div>
-                    <span className="text-[11px] font-medium text-on-surface-variant">Internship</span>
-                    <span className="text-[10px] text-on-surface-variant leading-tight">Summer '25</span>
-                  </div>
-                </div>
-
-                {/* Horizontal Track Line */}
-                <div className="absolute top-6 left-8 right-8 h-0.5 bg-surface-container-high -z-0"></div>
-                <div className="absolute top-6 left-8 w-1/3 h-0.5 bg-tertiary -z-0"></div>
-              </div>
-
-              {/* Recommended Mini Action from Mentor */}
-              <div className="p-3 rounded-xl bg-surface-container-low flex items-center justify-between gap-2">
                 <div className="flex items-center gap-2 min-w-0">
-                  <div className="w-8 h-8 rounded-lg bg-surface-container flex items-center justify-center shrink-0 text-secondary">
-                    <span className="material-symbols-outlined text-[20px]">lightbulb</span>
-                  </div>
-                  <div className="min-w-0">
-                    <p className="text-[12px] font-bold text-on-surface truncate">
-                      Docker Fundamentals Module
-                    </p>
-                    <p className="text-[11px] text-on-surface-variant truncate">
-                      Closes your SWE gap • 4 micro-lessons
-                    </p>
-                  </div>
+                  <span className="w-2 h-2 rounded-full bg-primary"></span>
+                  <h3 className="text-[17px] font-bold text-on-surface">Previous Year Papers & Trends</h3>
                 </div>
                 <button
-                  onClick={() => alert('Starting Docker Fundamentals Module for Alex!')}
-                  className="px-3 py-1 rounded-lg bg-secondary text-on-secondary text-[11px] font-bold hover:opacity-90 shrink-0 cursor-pointer"
+                  onClick={() => setActiveTab('pyqs')}
+                  className="text-[11px] text-primary font-bold hover:underline cursor-pointer"
                   type="button"
                 >
-                  Start
+                  View All (42)
                 </button>
               </div>
-            </div>
 
-            {/* Real-time Internship Match Card */}
-            <div className="p-4 rounded-2xl bg-surface-container-lowest shadow-sm space-y-3 border border-outline-variant/15">
-              <div className="flex items-start justify-between gap-2">
-                <div className="flex items-center gap-3 min-w-0">
-                  <img
-                    className="w-12 h-12 rounded-xl object-cover bg-surface-container shrink-0 shadow-xs"
-                    alt="Startup logo"
-                    src="https://lh3.googleusercontent.com/aida-public/AB6AXuCFRsEDtNYr2iS0rAHzZuQchd9mjoW290m6oUvMaMg_dvKVdCkXSYXe9dhOtVwKL4m-zVhloa_WwhQdr-EP8O5GFJsiEi4lJqDe2RYP1lsFTT_z-_4UdFNrSCgtO6BGTXZCItywKwTJ0Ut_cfRZqk_Y05o_3MW6jWueRVxCbY1mpGkiwu1aeSIEMM2WN8oc8LcvAt4KmqL1gN9dhr0dtwusX6j9y6MDR_kbAFjBTlnNHPq5aVU0jbT6"
-                  />
-                  <div className="min-w-0">
-                    <div className="flex items-center gap-1.5">
-                      <span className="px-2 py-0.5 rounded-full bg-tertiary-fixed text-on-tertiary-fixed text-[11px] font-bold">
-                        87% Match
-                      </span>
-                      <span className="text-[11px] text-on-surface-variant">Verified</span>
+              <div className="p-4 rounded-2xl bg-surface-container-lowest shadow-sm space-y-3.5 border border-outline-variant/15">
+                {/* Breadcrumb Dropdown Mock Selector */}
+                <div className="flex items-center gap-1.5 overflow-x-auto pb-1 no-scrollbar text-[11px] font-semibold">
+                  <button className="px-2.5 py-1.5 rounded-lg bg-surface-container-high text-on-surface flex items-center gap-1">
+                    <span>CS Eng</span>
+                    <span className="material-symbols-outlined text-[14px]">arrow_drop_down</span>
+                  </button>
+                  <span className="text-outline-variant font-bold">/</span>
+                  <button className="px-2.5 py-1.5 rounded-lg bg-surface-container-high text-on-surface flex items-center gap-1">
+                    <span>Sem 6</span>
+                    <span className="material-symbols-outlined text-[14px]">arrow_drop_down</span>
+                  </button>
+                  <span className="text-outline-variant font-bold">/</span>
+                  <button className="px-2.5 py-1.5 rounded-lg bg-surface-container-high text-on-surface flex items-center gap-1 font-bold">
+                    <span>DBMS</span>
+                    <span className="material-symbols-outlined text-[14px]">arrow_drop_down</span>
+                  </button>
+                  <span className="text-outline-variant font-bold">/</span>
+                  <button className="px-2.5 py-1.5 rounded-lg bg-primary-fixed text-on-primary-fixed font-bold flex items-center gap-1">
+                    <span>2023 End-Sem</span>
+                    <span className="material-symbols-outlined text-[14px]">check</span>
+                  </button>
+                </div>
+
+                {/* Topic Frequency Analytic Bar Chart */}
+                <div className="space-y-2 pt-1">
+                  <div className="flex items-center justify-between text-on-surface-variant text-[11px]">
+                    <span className="font-bold text-on-surface flex items-center gap-1">
+                      <span className="material-symbols-outlined text-secondary text-[16px]">insights</span>
+                      Topic Recurrence (Last 5 Years)
+                    </span>
+                    <span>Exam Probability</span>
+                  </div>
+
+                  <div className="space-y-2.5 pt-1">
+                    {/* Item 1: Normalization */}
+                    <div className="space-y-1">
+                      <div className="flex justify-between text-[11px]">
+                        <span className="font-medium text-on-surface">Normalization (3NF / BCNF)</span>
+                        <span className="font-bold text-primary">95%</span>
+                      </div>
+                      <div className="w-full h-2 rounded-full bg-surface-container-high overflow-hidden">
+                        <div className="h-full bg-primary rounded-full" style={{ width: '95%' }}></div>
+                      </div>
                     </div>
-                    <h4 className="text-[13px] font-bold text-on-surface truncate mt-0.5">
-                      Software Engineering Intern
-                    </h4>
-                    <p className="text-[12px] text-on-surface-variant truncate">
-                      CloudTech Innovations • Bengaluru Tech Park
-                    </p>
+
+                    {/* Item 2: Transactions */}
+                    <div className="space-y-1">
+                      <div className="flex justify-between text-[11px]">
+                        <span className="font-medium text-on-surface">Transactions & Concurrency Control</span>
+                        <span className="font-bold text-primary">82%</span>
+                      </div>
+                      <div className="w-full h-2 rounded-full bg-surface-container-high overflow-hidden">
+                        <div className="h-full bg-primary-container rounded-full" style={{ width: '82%' }}></div>
+                      </div>
+                    </div>
+
+                    {/* Item 3: SQL Queries */}
+                    <div className="space-y-1">
+                      <div className="flex justify-between text-[11px]">
+                        <span className="font-medium text-on-surface">Complex Joins & Subqueries</span>
+                        <span className="font-bold text-primary">75%</span>
+                      </div>
+                      <div className="w-full h-2 rounded-full bg-surface-container-high overflow-hidden">
+                        <div className="h-full bg-secondary-container rounded-full" style={{ width: '75%' }}></div>
+                      </div>
+                    </div>
+
+                    {/* Item 4: Indexing */}
+                    <div className="space-y-1">
+                      <div className="flex justify-between text-[11px]">
+                        <span className="font-medium text-on-surface">B-Trees & Hash Indexing</span>
+                        <span className="font-semibold text-on-surface-variant">50%</span>
+                      </div>
+                      <div className="w-full h-2 rounded-full bg-surface-container-high overflow-hidden">
+                        <div className="h-full bg-outline-variant rounded-full" style={{ width: '50%' }}></div>
+                      </div>
+                    </div>
                   </div>
                 </div>
-                <button
-                  onClick={() => alert('Saved Software Engineering Intern role to your bookmarks.')}
-                  className="w-8 h-8 rounded-full bg-surface-container flex items-center justify-center text-on-surface-variant hover:text-primary transition-colors shrink-0 cursor-pointer"
-                  type="button"
-                >
-                  <span className="material-symbols-outlined text-[18px]">bookmark_add</span>
-                </button>
+
+                {/* PYQ Document Actions Strip */}
+                <div className="pt-2 flex items-center justify-between">
+                  <div className="flex items-center gap-2">
+                    <button
+                      onClick={() => setActiveTab('stepguide')}
+                      className="py-1.5 px-3 rounded-lg bg-primary-container text-on-primary text-[13px] font-semibold flex items-center gap-1.5 shadow-xs active:scale-95 transition-transform cursor-pointer"
+                      type="button"
+                    >
+                      <span className="material-symbols-outlined text-[18px]">visibility</span>
+                      <span>View PDF</span>
+                    </button>
+                    <button
+                      onClick={() => alert('Downloading official 2023 End-Sem solved question paper (PDF 4.2 MB)...')}
+                      className="py-1.5 px-3 rounded-lg bg-surface-container text-on-surface text-[13px] font-medium flex items-center gap-1.5 hover:bg-surface-container-high transition-colors cursor-pointer"
+                      type="button"
+                    >
+                      <span className="material-symbols-outlined text-[18px]">download</span>
+                      <span>Download</span>
+                    </button>
+                  </div>
+                  <button
+                    onClick={() => alert('Bookmarked 2023 End-Sem paper for fast review!')}
+                    className="w-9 h-9 rounded-full bg-surface-container flex items-center justify-center text-on-surface-variant hover:text-primary transition-colors cursor-pointer"
+                    title="Bookmark Paper"
+                    type="button"
+                  >
+                    <span className="material-symbols-outlined text-[20px]">bookmark_border</span>
+                  </button>
+                </div>
+              </div>
+            </section>
+
+            {/* SECTION 3: CAREER COMPASS & MILESTONES */}
+            <section className="space-y-3">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-2 min-w-0">
+                  <span className="w-2 h-2 rounded-full bg-tertiary-fixed-dim"></span>
+                  <h3 className="text-[17px] font-bold text-on-surface">Career Compass & Milestones</h3>
+                </div>
+                <span className="text-[11px] text-tertiary font-bold">Backend Track</span>
               </div>
 
-              {/* Internship specs line */}
-              <div className="flex items-center justify-between text-[11px] text-on-surface-variant bg-surface-container-low px-3 py-2 rounded-xl">
-                <div className="flex items-center gap-1">
-                  <span className="material-symbols-outlined text-[16px] text-primary">payments</span>
-                  <span className="font-bold text-on-surface">₹25,000 / mo</span>
+              {/* Roadmap Visual Node Path Card */}
+              <div className="p-4 rounded-2xl bg-surface-container-lowest shadow-sm space-y-3 border border-outline-variant/15">
+                <div className="flex items-center justify-between">
+                  <h4 className="text-[13px] font-bold text-on-surface">Target: Summer SWE '25</h4>
+                  <span className="text-[11px] text-on-surface-variant">Step 2 of 4</span>
                 </div>
-                <div className="flex items-center gap-1">
-                  <span className="material-symbols-outlined text-[16px]">location_on</span>
-                  <span>1.4 km from campus</span>
+
+                {/* Visual Node Path */}
+                <div className="relative py-2">
+                  <div className="grid grid-cols-4 gap-2 text-center relative z-10">
+                    {/* Node 1: Completed */}
+                    <div className="flex flex-col items-center space-y-1">
+                      <div className="w-8 h-8 rounded-full bg-tertiary-container text-on-tertiary flex items-center justify-center shadow-xs">
+                        <span className="material-symbols-outlined text-[18px]">check</span>
+                      </div>
+                      <span className="text-[11px] font-bold text-on-surface">Skills</span>
+                      <span className="text-[10px] text-on-surface-variant leading-tight">Python, SQL</span>
+                    </div>
+
+                    {/* Node 2: In-Progress / Gap */}
+                    <div className="flex flex-col items-center space-y-1">
+                      <div className="w-8 h-8 rounded-full bg-primary-container text-on-primary flex items-center justify-center ring-2 ring-primary-fixed shadow-xs">
+                        <span className="material-symbols-outlined text-[18px]">lock_open</span>
+                      </div>
+                      <span className="text-[11px] font-bold text-primary">Skill Gap</span>
+                      <span className="text-[10px] text-on-surface-variant leading-tight">Docker, System</span>
+                    </div>
+
+                    {/* Node 3: Upcoming */}
+                    <div className="flex flex-col items-center space-y-1">
+                      <div className="w-8 h-8 rounded-full bg-surface-container-high text-on-surface-variant flex items-center justify-center">
+                        <span className="material-symbols-outlined text-[18px]">school</span>
+                      </div>
+                      <span className="text-[11px] font-medium text-on-surface-variant">Learning</span>
+                      <span className="text-[10px] text-on-surface-variant leading-tight">FastAPI Lab</span>
+                    </div>
+
+                    {/* Node 4: Target Goal */}
+                    <div className="flex flex-col items-center space-y-1">
+                      <div className="w-8 h-8 rounded-full bg-surface-container-high text-on-surface-variant flex items-center justify-center">
+                        <span className="material-symbols-outlined text-[18px]">rocket_launch</span>
+                      </div>
+                      <span className="text-[11px] font-medium text-on-surface-variant">Internship</span>
+                      <span className="text-[10px] text-on-surface-variant leading-tight">Summer '25</span>
+                    </div>
+                  </div>
+
+                  {/* Horizontal Track Line */}
+                  <div className="absolute top-6 left-8 right-8 h-0.5 bg-surface-container-high -z-0"></div>
+                  <div className="absolute top-6 left-8 w-1/3 h-0.5 bg-tertiary -z-0"></div>
                 </div>
-                <div className="flex items-center gap-1">
-                  <span className="material-symbols-outlined text-[16px]">work_history</span>
-                  <span>2 Mos</span>
+
+                {/* Recommended Mini Action from Mentor */}
+                <div className="p-3 rounded-xl bg-surface-container-low flex items-center justify-between gap-2">
+                  <div className="flex items-center gap-2 min-w-0">
+                    <div className="w-8 h-8 rounded-lg bg-surface-container flex items-center justify-center shrink-0 text-secondary">
+                      <span className="material-symbols-outlined text-[20px]">lightbulb</span>
+                    </div>
+                    <div className="min-w-0">
+                      <p className="text-[12px] font-bold text-on-surface truncate">
+                        Docker Fundamentals Module
+                      </p>
+                      <p className="text-[11px] text-on-surface-variant truncate">
+                        Closes your SWE gap • 4 micro-lessons
+                      </p>
+                    </div>
+                  </div>
+                  <button
+                    onClick={() => alert('Starting Docker Fundamentals Module for Alex!')}
+                    className="px-3 py-1 rounded-lg bg-secondary text-on-secondary text-[11px] font-bold hover:opacity-90 shrink-0 cursor-pointer"
+                    type="button"
+                  >
+                    Start
+                  </button>
                 </div>
               </div>
 
-              {/* Actions */}
-              <div className="flex items-center gap-2 pt-1">
-                <button
-                  onClick={() => alert('1-Click application sent with UW transcript & verified GitHub profile!')}
-                  className="flex-1 py-2 px-3 rounded-xl bg-primary-container text-on-primary text-[13px] font-semibold shadow-xs hover:opacity-95 transition-all text-center cursor-pointer"
-                  type="button"
-                >
-                  Apply Now (1-Click)
-                </button>
-                <button
-                  onClick={() => alert('Opening verified role requirements: Docker, FastAPI, PostgreSQL.')}
-                  className="py-2 px-3 rounded-xl bg-surface-container text-on-surface text-[13px] font-medium hover:bg-surface-container-high transition-colors cursor-pointer"
-                  type="button"
-                >
-                  View Details
-                </button>
-              </div>
-            </div>
-          </section>
+              {/* Real-time Internship Match Card */}
+              <div className="p-4 rounded-2xl bg-surface-container-lowest shadow-sm space-y-3 border border-outline-variant/15">
+                <div className="flex items-start justify-between gap-2">
+                  <div className="flex items-center gap-3 min-w-0">
+                    <img
+                      className="w-12 h-12 rounded-xl object-cover bg-surface-container shrink-0 shadow-xs"
+                      alt="Startup logo"
+                      src="https://lh3.googleusercontent.com/aida-public/AB6AXuCFRsEDtNYr2iS0rAHzZuQchd9mjoW290m6oUvMaMg_dvKVdCkXSYXe9dhOtVwKL4m-zVhloa_WwhQdr-EP8O5GFJsiEi4lJqDe2RYP1lsFTT_z-_4UdFNrSCgtO6BGTXZCItywKwTJ0Ut_cfRZqk_Y05o_3MW6jWueRVxCbY1mpGkiwu1aeSIEMM2WN8oc8LcvAt4KmqL1gN9dhr0dtwusX6j9y6MDR_kbAFjBTlnNHPq5aVU0jbT6"
+                    />
+                    <div className="min-w-0">
+                      <div className="flex items-center gap-1.5">
+                        <span className="px-2 py-0.5 rounded-full bg-tertiary-fixed text-on-tertiary-fixed text-[11px] font-bold">
+                          87% Match
+                        </span>
+                        <span className="text-[11px] text-on-surface-variant">Verified</span>
+                      </div>
+                      <h4 className="text-[13px] font-bold text-on-surface truncate mt-0.5">
+                        Software Engineering Intern
+                      </h4>
+                      <p className="text-[12px] text-on-surface-variant truncate">
+                        CloudTech Innovations • Bengaluru Tech Park
+                      </p>
+                    </div>
+                  </div>
+                  <button
+                    onClick={() => alert('Saved Software Engineering Intern role to your bookmarks.')}
+                    className="w-8 h-8 rounded-full bg-surface-container flex items-center justify-center text-on-surface-variant hover:text-primary transition-colors shrink-0 cursor-pointer"
+                    type="button"
+                  >
+                    <span className="material-symbols-outlined text-[18px]">bookmark_add</span>
+                  </button>
+                </div>
 
-          {/* Delightful Study Nudge Card with illustration photo */}
-          <div className="relative overflow-hidden rounded-2xl bg-surface-container p-4 flex items-center gap-4 border border-outline-variant/15">
-            <div className="space-y-1 min-w-0 flex-1">
-              <span className="text-[11px] font-bold uppercase tracking-wider text-secondary">
-                Study Buddy AI
-              </span>
-              <h4 className="text-[17px] font-bold text-on-surface">
-                Ready for a 25-min Pomodoro?
-              </h4>
-              <p className="text-[12px] text-on-surface-variant">
-                We queued 4 practice questions from DBMS Unit 3 based on your weakest topic.
-              </p>
-              <div className="pt-1">
-                <button
-                  onClick={() => setActiveTab('stepguide')}
-                  className="px-3 py-1.5 rounded-xl bg-secondary text-on-secondary text-[13px] font-medium inline-flex items-center gap-1 shadow-xs active:scale-95 transition-transform cursor-pointer"
-                  type="button"
-                >
-                  <span className="material-symbols-outlined text-[16px]">timer</span>
-                  <span>Launch Focus Session</span>
-                </button>
+                {/* Internship specs line */}
+                <div className="flex items-center justify-between text-[11px] text-on-surface-variant bg-surface-container-low px-3 py-2 rounded-xl">
+                  <div className="flex items-center gap-1">
+                    <span className="material-symbols-outlined text-[16px] text-primary">payments</span>
+                    <span className="font-bold text-on-surface">₹25,000 / mo</span>
+                  </div>
+                  <div className="flex items-center gap-1">
+                    <span className="material-symbols-outlined text-[16px]">location_on</span>
+                    <span>1.4 km from campus</span>
+                  </div>
+                  <div className="flex items-center gap-1">
+                    <span className="material-symbols-outlined text-[16px]">work_history</span>
+                    <span>2 Mos</span>
+                  </div>
+                </div>
+
+                {/* Actions */}
+                <div className="flex items-center gap-2 pt-1">
+                  <button
+                    onClick={() => alert('1-Click application sent with UW transcript & verified GitHub profile!')}
+                    className="flex-1 py-2 px-3 rounded-xl bg-primary-container text-on-primary text-[13px] font-semibold shadow-xs hover:opacity-95 transition-all text-center cursor-pointer"
+                    type="button"
+                  >
+                    Apply Now (1-Click)
+                  </button>
+                  <button
+                    onClick={() => alert('Opening verified role requirements: Docker, FastAPI, PostgreSQL.')}
+                    className="py-2 px-3 rounded-xl bg-surface-container text-on-surface text-[13px] font-medium hover:bg-surface-container-high transition-colors cursor-pointer"
+                    type="button"
+                  >
+                    View Details
+                  </button>
+                </div>
               </div>
-            </div>
-            <div className="w-20 h-20 rounded-2xl overflow-hidden shrink-0 shadow-sm">
-              <img
-                className="w-full h-full object-cover"
-                src="https://lh3.googleusercontent.com/aida-public/AB6AXuBDXlgWjSCgkyfTQ8zMmWhzBfjt74DvNoRekncLL_vLZF5HOr-iwu1eDxxMFiI5v0jvE9yQOcfGEHvnEnwfTNujWk7G3UY0d2yeOXhwY-4Jj6o2E_cQqb0U9hFFIDNxk8MPCmJsWPdI0XLw8dv0K1BFoDOyCxGfppQjoI-Ofm3Aj2eNPyRPdZVoL1HCOA5R2GLaIKNJkNAU1ovNK9F_wjzz7wm6cuDRwIy0bCnBh23BwWaOZIUQ3ihy"
-                alt="Cozy study desk"
-              />
-            </div>
+            </section>
           </div>
         </div>
       )}

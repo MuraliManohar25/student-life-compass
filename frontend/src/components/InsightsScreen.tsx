@@ -14,7 +14,7 @@ export const InsightsScreen: React.FC<InsightsScreenProps> = ({ onOpenStudyGuide
   };
 
   return (
-    <div className="flex flex-col w-full px-4 space-y-4 max-w-max-content-width mx-auto pb-4 pt-1">
+    <div className="flex flex-col w-full px-4 sm:px-6 lg:px-8 space-y-6 max-w-[1400px] mx-auto pb-6 pt-1 lg:pt-2">
       {/* Segmented Control */}
       <div className="w-full bg-gray-100 p-1 rounded-xl flex border border-gray-200">
         <button

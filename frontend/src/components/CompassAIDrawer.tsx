@@ -85,8 +85,8 @@ export const CompassAIDrawer: React.FC<CompassAIDrawerProps> = ({
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-end justify-center bg-on-background/55 backdrop-blur-xs transition-all">
-      <div className="bg-surface-container-lowest w-full max-w-lg h-[92vh] rounded-t-3xl shadow-2xl flex flex-col overflow-hidden border border-outline-variant/20 animate-in slide-in-from-bottom duration-200">
+    <div className="fixed inset-0 z-50 flex items-end lg:items-stretch justify-center lg:justify-end bg-on-background/55 backdrop-blur-xs transition-all">
+      <div className="bg-surface-container-lowest w-full max-w-lg lg:max-w-md h-[92vh] lg:h-full rounded-t-3xl lg:rounded-none lg:rounded-l-3xl shadow-2xl flex flex-col overflow-hidden border border-outline-variant/20 animate-in slide-in-from-bottom lg:slide-in-from-right duration-200">
         {/* Drag Handle & Header */}
         <div className="p-4 pb-2 border-b border-outline-variant/15 flex flex-col items-center bg-surface-container-low/50">
           <div className="w-12 h-1.5 rounded-full bg-outline-variant/60 mb-2"></div>

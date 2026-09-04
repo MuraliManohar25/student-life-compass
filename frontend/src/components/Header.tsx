@@ -24,8 +24,8 @@ export const Header: React.FC<HeaderProps> = ({
   onOpenProfile
 }) => {
   return (
-    <header className="fixed top-0 left-0 right-0 w-full z-40 bg-white/95 backdrop-blur-md border-b border-gray-200 shadow-xs">
-      <div className="max-w-max-content-width mx-auto h-16 px-4 flex items-center justify-between gap-3">
+    <header className="lg:hidden fixed top-0 left-0 right-0 w-full z-40 bg-white/95 backdrop-blur-md border-b border-gray-200 shadow-xs">
+      <div className="max-w-[1400px] mx-auto h-16 px-4 flex items-center justify-between gap-3">
         {/* Brand and Current Section Title */}
         <div className="flex items-center gap-3 min-w-0">
           <div className="w-9 h-9 bg-indigo-600 rounded-xl flex items-center justify-center text-white font-bold text-lg shadow-xs shrink-0">
