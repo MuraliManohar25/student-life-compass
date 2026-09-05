@@ -1,3 +1,4 @@
+import io
 import json
 import os
 from pathlib import Path
@@ -6,6 +7,31 @@ from typing import Any, List, Optional
 from dotenv import load_dotenv
 from pydantic import field_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
+
+
+def _load_env_file_safely() -> None:
+    env_path = Path(__file__).resolve().parents[2] / ".env"
+    if not env_path.exists():
+        return
+
+    for encoding in ("utf-8", "utf-8-sig", "utf-16", "utf-16-le", "utf-16-be"):
+        try:
+            with env_path.open("r", encoding=encoding) as env_file:
+                content = env_file.read()
+            if content.strip():
+                from dotenv import dotenv_values
+                values = dotenv_values(stream=io.StringIO(content))
+                for key, value in values.items():
+                    if key and value is not None and key not in os.environ:
+                        os.environ[key] = str(value)
+                return
+        except (UnicodeDecodeError, OSError, ValueError):
+            continue
+
+    load_dotenv(env_path)
+
+
+_load_env_file_safely()
 
 
 class Settings(BaseSettings):
@@ -23,6 +49,11 @@ class Settings(BaseSettings):
 
     # Google Gemini AI Settings
     GEMINI_API_KEY: str = ""
+
+    # JWT Settings
+    SECRET_KEY: str = os.getenv("SECRET_KEY", "")
+    ALGORITHM: str = os.getenv("ALGORITHM", "HS256")
+    ACCESS_TOKEN_EXPIRE_MINUTES: int = int(os.getenv("ACCESS_TOKEN_EXPIRE_MINUTES", "43200"))
 
     # SMTP Settings (Optional)
     SMTP_HOST: str = ""
@@ -44,6 +75,7 @@ DEFAULT_CORS_ORIGINS = [
     "http://127.0.0.1:5173",
     "http://localhost:8000",
     "https://student-life-compass-1.onrender.com",
+    "https://student-life-compass.onrender.com",
 ]
 
 
