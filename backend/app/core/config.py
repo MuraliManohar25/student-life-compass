@@ -43,25 +43,34 @@ DEFAULT_CORS_ORIGINS = [
     "http://localhost:5173",
     "http://127.0.0.1:5173",
     "http://localhost:8000",
+    "https://student-life-compass-1.onrender.com",
 ]
 
 
 def _parse_cors_origins() -> List[str]:
     cors_env = os.getenv("CORS_ORIGINS", "")
-    if not cors_env or not cors_env.strip():
-        return DEFAULT_CORS_ORIGINS
+    origins = list(DEFAULT_CORS_ORIGINS)
 
-    stripped = cors_env.strip()
+    if cors_env and cors_env.strip():
+        stripped = cors_env.strip()
+        if stripped.startswith("[") and stripped.endswith("]"):
+            try:
+                parsed = json.loads(stripped)
+                if isinstance(parsed, list):
+                    origins.extend([str(item).strip().rstrip('/') for item in parsed if str(item).strip()])
+            except json.JSONDecodeError:
+                pass
+        else:
+            origins.extend([item.strip().rstrip('/') for item in stripped.split(",") if item.strip()])
 
-    if stripped.startswith("[") and stripped.endswith("]"):
-        try:
-            parsed = json.loads(stripped)
-            if isinstance(parsed, list):
-                return [str(item).strip() for item in parsed if str(item).strip()]
-        except json.JSONDecodeError:
-            pass
-
-    return [item.strip() for item in stripped.split(",") if item.strip()]
+    # Deduplicate while preserving order and filter out placeholder text
+    seen = set()
+    result = []
+    for item in origins:
+        if item not in seen and "<" not in item:
+            seen.add(item)
+            result.append(item)
+    return result
 
 
 object.__setattr__(settings, 'CORS_ORIGINS', _parse_cors_origins())
