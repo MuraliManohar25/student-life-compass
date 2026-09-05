@@ -58,18 +58,24 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-# Register Routers
-app.include_router(auth_router, prefix=settings.API_V1_STR)
-app.include_router(profile_router, prefix=settings.API_V1_STR)
-app.include_router(career_router, prefix=settings.API_V1_STR)
-app.include_router(study_router, prefix=settings.API_V1_STR)
-app.include_router(budget_router, prefix=settings.API_V1_STR)
-app.include_router(placement_router, prefix=settings.API_V1_STR)
-app.include_router(risk_router, prefix=settings.API_V1_STR)
-app.include_router(notification_router, prefix=settings.API_V1_STR)
-app.include_router(reports_router, prefix=settings.API_V1_STR)
-app.include_router(dashboard_router, prefix=settings.API_V1_STR)
-app.include_router(ai_router, prefix=settings.API_V1_STR)
+# Register Routers (with both /api prefix and root fallback)
+routers = [
+    auth_router,
+    profile_router,
+    career_router,
+    study_router,
+    budget_router,
+    placement_router,
+    risk_router,
+    notification_router,
+    reports_router,
+    dashboard_router,
+    ai_router,
+]
+
+for r in routers:
+    app.include_router(r, prefix=settings.API_V1_STR)
+    app.include_router(r, prefix="")
 
 
 @app.get("/")

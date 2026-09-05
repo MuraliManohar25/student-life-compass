@@ -7,8 +7,18 @@
 // Set VITE_API_BASE_URL at build time on Render (Static Site -> Environment)
 // to the full backend URL, e.g. https://student-life-compass-api.onrender.com/api
 // Falls back to a same-origin "/api" path for local dev via the Vite proxy.
-const API_BASE_URL: string =
-  (import.meta as any).env?.VITE_API_BASE_URL || '/api';
+function getApiBaseUrl(): string {
+  let url = ((import.meta as any).env?.VITE_API_BASE_URL || '/api').trim();
+  url = url.replace(/\/+$/, ''); // Remove trailing slashes
+
+  // If a full http(s) URL was provided without the /api suffix, automatically append /api
+  if (url.startsWith('http') && !url.endsWith('/api')) {
+    url = `${url}/api`;
+  }
+  return url;
+}
+
+const API_BASE_URL: string = getApiBaseUrl();
 
 const TOKEN_KEY = 'slc_token';
 
