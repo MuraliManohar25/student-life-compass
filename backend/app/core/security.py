@@ -1,17 +1,16 @@
 from typing import Optional
-import httpx
 import jwt
 from jwt import PyJWKClient
 from fastapi import Depends, HTTPException, status
-from fastapi.security import OAuth2AuthorizationCodeBearer, OAuth2PasswordBearer
+from fastapi.security import OAuth2PasswordBearer
 from sqlalchemy.orm import Session
 
 from app.core.config import settings
 from app.core.database import get_db
 from app.models.models import User
 
-# Supabase JWKS URL for JWT verification
-SUPABASE_JWKS_URL = f"{settings.SUPABASE_URL}/auth/v1/keys"
+# Supabase JWKS URL for JWT verification (public keys)
+SUPABASE_JWKS_URL = f"{settings.SUPABASE_URL}/auth/v1/.well-known/jwks.json"
 
 # OAuth2 scheme - tokenUrl points to Supabase login (handled on frontend)
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl="supabase", auto_error=False)
@@ -41,7 +40,7 @@ async def get_current_user_optional(
         payload = jwt.decode(
             token,
             signing_key.key,
-            algorithms=["RS256"],
+            algorithms=["ES256"],
             audience="authenticated",
             options={"verify_exp": True}
         )
