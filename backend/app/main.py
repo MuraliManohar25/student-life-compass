@@ -25,10 +25,19 @@ from app.api.dashboard import router as dashboard_router
 from app.api.ai import router as ai_router
 
 
+from sqlalchemy import text
+
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     try:
         Base.metadata.create_all(bind=engine)
+        with engine.begin() as conn:
+            try:
+                conn.execute(text("ALTER TABLE users ADD COLUMN IF NOT EXISTS supabase_id VARCHAR;"))
+                conn.execute(text("ALTER TABLE users ADD COLUMN IF NOT EXISTS hashed_password VARCHAR;"))
+            except Exception as col_err:
+                print(f"Column migration warning: {col_err}")
+
         db = SessionLocal()
         try:
             seed_database(db)
