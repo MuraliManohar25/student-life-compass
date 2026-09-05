@@ -2,7 +2,7 @@ from sqlalchemy import create_engine
 from sqlalchemy.orm import declarative_base, sessionmaker
 from app.core.config import settings
 
-db_url = settings.DATABASE_URL
+db_url = settings.DATABASE_URL or "sqlite:///./student_compass.db"
 
 # Fix legacy postgres:// URI scheme for SQLAlchemy 2.0 / Supabase
 if db_url.startswith("postgres://"):

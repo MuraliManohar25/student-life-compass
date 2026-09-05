@@ -14,15 +14,23 @@ class Settings(BaseSettings):
     API_V1_STR: str = "/api"
 
     # Supabase Configuration
-    SUPABASE_URL: str
-    SUPABASE_ANON_KEY: str
+    SUPABASE_URL: str = ""
+    SUPABASE_ANON_KEY: str = ""
     SUPABASE_SERVICE_ROLE_KEY: str = ""
 
     # Database (Supabase PostgreSQL)
-    DATABASE_URL: str
+    DATABASE_URL: str = "sqlite:///./student_compass.db"
 
     # Google Gemini AI Settings
     GEMINI_API_KEY: str = ""
+
+    # SMTP Settings (Optional)
+    SMTP_HOST: str = ""
+    SMTP_PORT: int = 587
+    SMTP_USERNAME: str = ""
+    SMTP_PASSWORD: str = ""
+    SMTP_FROM_EMAIL: str = ""
+    SMTP_FROM_NAME: str = "Student Life Compass"
 
     model_config = SettingsConfigDict(env_file=".env", env_file_encoding="utf-8", extra="ignore")
 

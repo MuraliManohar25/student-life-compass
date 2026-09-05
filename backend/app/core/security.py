@@ -9,9 +9,6 @@ from app.core.config import settings
 from app.core.database import get_db
 from app.models.models import User
 
-# Supabase JWKS URL for JWT verification (public keys)
-SUPABASE_JWKS_URL = f"{settings.SUPABASE_URL}/auth/v1/.well-known/jwks.json"
-
 # OAuth2 scheme - tokenUrl points to Supabase login (handled on frontend)
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl="supabase", auto_error=False)
 
@@ -22,7 +19,13 @@ _jwks_client: Optional[PyJWKClient] = None
 def get_jwks_client() -> PyJWKClient:
     global _jwks_client
     if _jwks_client is None:
-        _jwks_client = PyJWKClient(SUPABASE_JWKS_URL)
+        if not settings.SUPABASE_URL:
+            raise HTTPException(
+                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                detail="SUPABASE_URL is not configured on the server."
+            )
+        jwks_url = f"{settings.SUPABASE_URL.rstrip('/')}/auth/v1/.well-known/jwks.json"
+        _jwks_client = PyJWKClient(jwks_url)
     return _jwks_client
 
 
