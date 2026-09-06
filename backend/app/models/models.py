@@ -11,6 +11,9 @@ class User(Base):
     hashed_password = Column(String, nullable=False)
     full_name = Column(String, nullable=False)
     role = Column(String, default="student")
+    is_verified = Column(Boolean, default=False)
+    email_verified_at = Column(DateTime, nullable=True)
+    onboarding_completed = Column(Boolean, default=False)
     created_at = Column(DateTime, default=datetime.utcnow)
     updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
 
@@ -26,27 +29,72 @@ class User(Base):
     risk_predictions = relationship("RiskPrediction", back_populates="user")
     weekly_reports = relationship("WeeklyReport", back_populates="user")
 
+
 class Profile(Base):
     __tablename__ = "profiles"
 
     id = Column(Integer, primary_key=True, index=True)
     user_id = Column(Integer, ForeignKey("users.id"), unique=True, nullable=False)
+    
+    # Basic Information
     college = Column(String, default="")
+    college_name = Column(String, default="")
+    course = Column(String, default="")
+    branch = Column(String, default="")
+    year = Column(String, default="1st Year")
     major = Column(String, default="")
     cohort_standing = Column(String, default="Standard")
+    
+    # Academic Information
+    cgpa = Column(Float, default=0.0)
     current_gpa = Column(Float, default=0.0)
     target_gpa = Column(Float, default=0.0)
-    target_role = Column(String, default="")
+    backlogs = Column(Integer, default=0)
+    strong_subjects = Column(JSON, default=list)
+    weak_subjects = Column(JSON, default=list)
+    
+    # Skills
+    programming_languages = Column(JSON, default=list)
+    technical_skills = Column(JSON, default=list)
     market_match_index = Column(Float, default=0.0)
-    sleep_hours = Column(Float, default=0.0)
     resume_score = Column(Float, default=0.0)
     dsa_solved = Column(Integer, default=0)
     github_commits = Column(Integer, default=0)
+    
+    # Career Goal
+    career_goal = Column(String, default="")
+    target_company_type = Column(String, default="Any Good Opportunity")
+    target_role = Column(String, default="")
+    
+    # Study Habits
+    study_hours = Column(Float, default=3.0)
+    preferred_study_time = Column(String, default="Evening")
+    learning_method = Column(String, default="Mixed")
+    sleep_hours = Column(Float, default=7.0)
+    
+    # Budget Information
+    monthly_budget = Column(Float, default=5000.0)
+    monthly_expenses = Column(Float, default=0.0)
+    major_expense_categories = Column(JSON, default=list)
+    
+    # Placement
+    placement_preparation = Column(String, default="No")
+    placement_level = Column(String, default="Beginner")
+    
+    # Goals & Challenges
+    biggest_challenge = Column(String, default="")
+    compass_help = Column(JSON, default=list)
+    onboarding_completed = Column(Boolean, default=False)
+    
     created_at = Column(DateTime, default=datetime.utcnow)
     updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
 
     user = relationship("User", back_populates="profile")
     skills = relationship("Skill", back_populates="profile", cascade="all, delete-orphan")
+
+# Alias for convenience
+StudentProfile = Profile
+
 
 class Skill(Base):
     __tablename__ = "skills"

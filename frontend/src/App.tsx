@@ -32,18 +32,31 @@ export function App() {
       return;
     }
 
-    setIsAuthenticated(true);
-
     try {
-      const profile = await profileApi.getProfile();
-      if (profile && profile.college && profile.college.trim() !== "") {
+      const statusRes = await profileApi.getOnboardingStatus();
+      setIsAuthenticated(true);
+      if (statusRes.onboarding_completed) {
         setIsProfileComplete(true);
       } else {
         setIsProfileComplete(false);
       }
-    } catch {
-      // In case of invalid token or network offline fallback
-      setIsProfileComplete(true);
+    } catch (err: any) {
+      // If token expired or unverified (401 or 403), reset auth
+      if (err.response?.status === 401 || err.response?.status === 403) {
+        localStorage.removeItem("token");
+        setIsAuthenticated(false);
+        setIsProfileComplete(false);
+      } else {
+        // Offline / fallback: check profile endpoint
+        try {
+          const profile = await profileApi.getProfile();
+          setIsAuthenticated(true);
+          setIsProfileComplete(Boolean(profile.onboarding_completed || profile.college));
+        } catch {
+          setIsAuthenticated(false);
+          setIsProfileComplete(false);
+        }
+      }
     } finally {
       setCheckingAuth(false);
     }
@@ -52,6 +65,7 @@ export function App() {
   useEffect(() => {
     checkUserProfile();
   }, []);
+
 
   const handleAuthSuccess = (token: string, isNewUser: boolean, profileComplete: boolean) => {
     localStorage.setItem("token", token);

@@ -9,7 +9,13 @@ from app.models.models import (
 def seed_database(db: Session):
     existing_user = db.query(User).first()
     if existing_user:
+        default_user = db.query(User).filter(User.email == "murali@stanford.edu").first()
+        if default_user and not default_user.is_verified:
+            default_user.is_verified = True
+            default_user.onboarding_completed = True
+            db.commit()
         return
+
 
     print("Seeding database with default student profile...")
 
@@ -17,7 +23,9 @@ def seed_database(db: Session):
         email="murali@stanford.edu",
         hashed_password=get_password_hash("password123"),
         full_name="Murali K.",
-        role="student"
+        role="student",
+        is_verified=True,
+        onboarding_completed=True
     )
     db.add(user)
     db.commit()
@@ -26,17 +34,41 @@ def seed_database(db: Session):
     profile = Profile(
         user_id=user.id,
         college="Stanford University",
+        college_name="Stanford University",
+        course="B.S. Computer Science",
+        branch="Computer Science & Systems",
+        year="3rd Year",
         major="Computer Science",
         cohort_standing="Top 15%",
+        cgpa=3.88,
         current_gpa=3.88,
         target_gpa=4.00,
+        backlogs=0,
+        strong_subjects=["Operating Systems", "Deep Learning", "Algorithms"],
+        weak_subjects=["Computer Networks"],
+        programming_languages=["Python", "C++", "JavaScript", "SQL"],
+        technical_skills=["AI/ML", "Web Development", "Cloud", "Data Structures"],
+        career_goal="AI/ML Engineer",
+        target_company_type="Product Based",
         target_role="AI Engineer",
+        study_hours=4.5,
+        preferred_study_time="Evening",
+        learning_method="Projects",
+        monthly_budget=5000.0,
+        monthly_expenses=790.0,
+        major_expense_categories=["Food", "Academics", "Utilities"],
+        placement_preparation="Yes",
+        placement_level="Intermediate",
+        biggest_challenge="Time Management",
+        compass_help=["Study Planning", "Career Guidance", "Placement Preparation", "AI Assistance"],
         market_match_index=84.0,
-        sleep_hours=6.2
+        sleep_hours=6.2,
+        onboarding_completed=True
     )
     db.add(profile)
     db.commit()
     db.refresh(profile)
+
 
     skills = [
         Skill(profile_id=profile.id, name="Python", proficiency_score=92.0, market_benchmark=90.0, category="Technical"),

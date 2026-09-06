@@ -7,7 +7,7 @@ from app.core.config import settings
 if not settings.SECRET_KEY:
     raise RuntimeError("SECRET_KEY environment variable must be set to start the application")
 
-from app.core.database import engine, Base, SessionLocal
+from app.core.database import engine, Base, SessionLocal, check_and_migrate_columns
 from app.seed_data import seed_database
 
 # API Routers
@@ -25,6 +25,8 @@ from app.api.ai import router as ai_router
 
 # Ensure DB tables exist
 Base.metadata.create_all(bind=engine)
+check_and_migrate_columns()
+
 
 # Seed default data
 db = SessionLocal()

@@ -20,11 +20,12 @@ apiClient.interceptors.request.use((config) => {
 
 // Auth API
 export const authApi = {
+  register: async (email: string, password: string, fullName: string) => {
+    const res = await apiClient.post('/auth/register', { email, password, full_name: fullName });
+    return res.data;
+  },
   signup: async (email: string, password: string, fullName: string) => {
     const res = await apiClient.post('/auth/signup', { email, password, full_name: fullName });
-    if (res.data.access_token) {
-      localStorage.setItem('token', res.data.access_token);
-    }
     return res.data;
   },
   login: async (email: string, password: string) => {
@@ -57,20 +58,55 @@ export const profileApi = {
     const res = await apiClient.get('/profile/me');
     return res.data;
   },
-  updateProfile: async (data: {
-    college: string;
-    major: string;
-    current_gpa: number;
-    target_gpa: number;
-    target_role: string;
-    sleep_hours: number;
+  getOnboardingStatus: async () => {
+    const res = await apiClient.get('/profile/onboarding-status');
+    return res.data;
+  },
+  submitOnboarding: async (data: {
+    full_name?: string;
+    college_name: string;
+    course: string;
+    branch: string;
+    year: string;
+    cgpa: number;
+    backlogs: number;
+    strong_subjects: string[];
+    weak_subjects: string[];
+    programming_languages: string[];
+    technical_skills: string[];
+    career_goal: string;
+    target_company_type: string;
+    study_hours: number;
+    preferred_study_time: string;
+    learning_method: string;
     monthly_budget: number;
-    skills: { name: string; proficiency_score: number }[];
+    monthly_expenses: number;
+    major_expense_categories: string[];
+    placement_preparation: string;
+    placement_level: string;
+    target_role: string;
+    biggest_challenge: string;
+    compass_help: string[];
+  }) => {
+    const res = await apiClient.post('/profile/onboarding', data);
+    return res.data;
+  },
+  updateProfile: async (data: {
+    college?: string;
+    major?: string;
+    current_gpa?: number;
+    target_gpa?: number;
+    target_role?: string;
+    sleep_hours?: number;
+    monthly_budget?: number;
+    skills?: { name: string; proficiency_score: number }[];
+    [key: string]: any;
   }) => {
     const res = await apiClient.put('/profile/me', data);
     return res.data;
   },
 };
+
 
 // Dashboard API
 export const dashboardApi = {
