@@ -205,6 +205,70 @@ export async function getDashboard(): Promise<DashboardResponse> {
   return request<DashboardResponse>('/dashboard');
 }
 
+// ---- Budget / Risk / Placement (used by HomeScreen real-data wiring) ----
+
+export interface BudgetSummaryResponse {
+  total_spent: number;
+  remaining_balance: number;
+  monthly_budget: number;
+  daily_cap: number;
+  predicted_monthly_total: number;
+  forecast_confidence: number;
+  suggestions: string[];
+}
+
+export async function getBudgetSummary(): Promise<BudgetSummaryResponse> {
+  return request<BudgetSummaryResponse>('/budget/summary');
+}
+
+export interface RiskPredictionResponse {
+  burnout_risk_score: number;
+  risk_level: string;
+  workload_density: number;
+  peak_in_hours: number;
+  recommendations: Array<{ icon: string; color: string; text: string }>;
+}
+
+export async function getRiskPrediction(): Promise<RiskPredictionResponse> {
+  return request<RiskPredictionResponse>('/risk/predict');
+}
+
+export interface PlacementReadinessResponse {
+  overall_score: number;
+  resume_score: number;
+  projects_score: number;
+  github_score: number;
+  dsa_score: number;
+  communication_score: number;
+  match_rate: string;
+  applications: Array<{ company: string; role: string; match: string; status: string }>;
+  recommendations: string[];
+}
+
+export async function getPlacementReadiness(): Promise<PlacementReadinessResponse> {
+  return request<PlacementReadinessResponse>('/placement-readiness');
+}
+
+// ---- Study session mutation (task completion toggling on Home) ----
+
+export interface StudySessionOut {
+  id: number;
+  user_id: number;
+  title: string;
+  room: string;
+  tag: string;
+  status: string;
+  scheduled_time: string;
+  duration_minutes: number;
+}
+
+export async function updateStudySession(
+  id: number | string,
+  data: Partial<{ title: string; scheduled_time: string; room: string; tag: string; status: string; duration_minutes: number }>
+): Promise<StudySessionOut> {
+  return request<StudySessionOut>(`/study-plan/${id}`, { method: 'PUT', body: data });
+}
+
 // ---- AI Assistant endpoint ----
 
 export interface AskAiResponse {

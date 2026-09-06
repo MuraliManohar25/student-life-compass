@@ -1,43 +1,128 @@
-import React, { useState, useEffect, useRef } from 'react';
-import { TaskItem, StudentSpot, NavTab } from '../types';
+import React, { useState, useEffect, useCallback } from 'react';
+import { StudentSpot, NavTab } from '../types';
+import { useAuth } from '../context/AuthContext';
+import {
+  getDashboard,
+  getMyProfile,
+  getBudgetSummary,
+  getRiskPrediction,
+  getPlacementReadiness,
+  updateStudySession,
+  DashboardResponse,
+  ProfileOut,
+  BudgetSummaryResponse,
+  RiskPredictionResponse,
+  PlacementReadinessResponse,
+  ApiError,
+} from '../lib/api';
 
 interface HomeScreenProps {
-  tasks: TaskItem[];
-  onToggleTask: (id: string) => void;
   onNavigateTab: (tab: NavTab) => void;
   onOpenStudyGuide: () => void;
+  // NOTE: Nearby Student Spots has no backend endpoint yet (no /explore or
+  // /spots route exists in the API). Kept as a prop from mock data until
+  // that module is wired up next.
   spots: StudentSpot[];
 }
 
-export const HomeScreen: React.FC<HomeScreenProps> = ({
-  tasks,
-  onToggleTask,
-  onNavigateTab,
-  onOpenStudyGuide,
-  spots
-}) => {
-  const [activeTaskStarting, setActiveTaskStarting] = useState(false);
-  const [taskStarted, setTaskStarted] = useState(false);
+export const HomeScreen: React.FC<HomeScreenProps> = ({ onNavigateTab, onOpenStudyGuide, spots }) => {
+  const { user } = useAuth();
+
+  const [isLoading, setIsLoading] = useState(true);
+  const [loadError, setLoadError] = useState<string | null>(null);
+  const [dashboard, setDashboard] = useState<DashboardResponse | null>(null);
+  const [profile, setProfile] = useState<ProfileOut | null>(null);
+  const [budget, setBudget] = useState<BudgetSummaryResponse | null>(null);
+  const [risk, setRisk] = useState<RiskPredictionResponse | null>(null);
+  const [placement, setPlacement] = useState<PlacementReadinessResponse | null>(null);
+
   const [snoozedPriority, setSnoozedPriority] = useState(false);
-  const [selectedSpotDay, setSelectedSpotDay] = useState<string>('wed');
-  const timeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const [togglingTaskId, setTogglingTaskId] = useState<string | null>(null);
 
-  const completedCount = tasks.filter((t) => t.completed).length;
-
-  const handleStartTask = () => {
-    if (timeoutRef.current) clearTimeout(timeoutRef.current);
-    setActiveTaskStarting(true);
-    timeoutRef.current = setTimeout(() => {
-      setActiveTaskStarting(false);
-      setTaskStarted(true);
-    }, 600);
-  };
+  const loadAll = useCallback(async () => {
+    setIsLoading(true);
+    setLoadError(null);
+    try {
+      const [d, p, b, r, pl] = await Promise.all([
+        getDashboard(),
+        getMyProfile(),
+        getBudgetSummary(),
+        getRiskPrediction(),
+        getPlacementReadiness(),
+      ]);
+      setDashboard(d);
+      setProfile(p);
+      setBudget(b);
+      setRisk(r);
+      setPlacement(pl);
+    } catch (err) {
+      setLoadError(err instanceof ApiError ? err.message : 'Could not load your dashboard. Pull to retry.');
+    } finally {
+      setIsLoading(false);
+    }
+  }, []);
 
   useEffect(() => {
-    return () => {
-      if (timeoutRef.current) clearTimeout(timeoutRef.current);
-    };
-  }, []);
+    loadAll();
+  }, [loadAll]);
+
+  const handleToggleTask = async (taskId: string, currentlyCompleted: boolean) => {
+    if (!dashboard) return;
+    setTogglingTaskId(taskId);
+    // Optimistic update
+    setDashboard({
+      ...dashboard,
+      tasks: dashboard.tasks.map((t) => (t.id === taskId ? { ...t, completed: !currentlyCompleted } : t)),
+    });
+    try {
+      await updateStudySession(taskId, { status: currentlyCompleted ? 'Upcoming' : 'Done' });
+    } catch {
+      // Roll back on failure
+      setDashboard((prev) =>
+        prev
+          ? { ...prev, tasks: prev.tasks.map((t) => (t.id === taskId ? { ...t, completed: currentlyCompleted } : t)) }
+          : prev
+      );
+    } finally {
+      setTogglingTaskId(null);
+    }
+  };
+
+  if (isLoading) {
+    return (
+      <div className="flex items-center justify-center min-h-[60vh]">
+        <div className="flex flex-col items-center gap-3">
+          <div className="w-8 h-8 border-3 border-indigo-200 border-t-indigo-600 rounded-full animate-spin" />
+          <span className="text-xs font-medium text-gray-500">Loading your dashboard…</span>
+        </div>
+      </div>
+    );
+  }
+
+  if (loadError || !dashboard || !profile || !budget || !risk || !placement) {
+    return (
+      <div className="flex flex-col items-center justify-center min-h-[60vh] gap-3 px-6 text-center">
+        <span className="material-symbols-outlined text-[32px] text-red-500">error</span>
+        <p className="text-sm text-gray-600">{loadError || 'Something went wrong loading your dashboard.'}</p>
+        <button
+          onClick={loadAll}
+          type="button"
+          className="px-4 py-2 rounded-lg bg-indigo-600 text-white text-xs font-semibold hover:bg-indigo-700"
+        >
+          Retry
+        </button>
+      </div>
+    );
+  }
+
+  const completedCount = dashboard.tasks.filter((t) => t.completed).length;
+  const topPriorityAction = dashboard.ai_actions[0];
+  const spentSoFar = budget.total_spent;
+  const budgetPercent = budget.monthly_budget > 0 ? Math.min(100, Math.round((spentSoFar / budget.monthly_budget) * 100)) : 0;
+  const budgetHealthy = dashboard.remaining_budget > dashboard.daily_budget_limit * 3;
+
+  const greetingHour = new Date().getHours();
+  const greeting = greetingHour < 12 ? 'Good morning' : greetingHour < 18 ? 'Good afternoon' : 'Good evening';
 
   return (
     <div className="flex flex-col w-full px-4 sm:px-6 lg:px-8 space-y-6 max-w-[1400px] mx-auto pb-6 pt-1 lg:pt-2">
@@ -46,14 +131,14 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({
         <div className="min-w-0">
           <div className="flex items-center gap-2">
             <h1 className="text-2xl sm:text-3xl font-semibold text-[#1a1a1a] truncate tracking-tight">
-              Good morning, Alex
+              {greeting}, {user?.full_name?.split(' ')[0] || 'there'}
             </h1>
             <span className="text-xl">👋</span>
           </div>
           <div className="flex items-center gap-2 mt-1 text-xs uppercase tracking-widest text-gray-500 font-semibold">
-            <span>CS • Sem 6</span>
+            <span>{profile.major || 'Add your major'}</span>
             <span className="w-1 h-1 rounded-full bg-gray-300"></span>
-            <span className="text-indigo-600 font-bold">UW Seattle</span>
+            <span className="text-indigo-600 font-bold">{profile.college || dashboard.cohort_standing}</span>
           </div>
         </div>
         <div className="relative shrink-0 flex items-center justify-center w-10 h-10 rounded-xl bg-gray-100 text-gray-700 shadow-xs border border-gray-200">
@@ -66,8 +151,8 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
         {/* Left Column: AI Nudge & Today's Focus */}
         <div className="lg:col-span-7 space-y-6">
-          {/* Smart AI Proactive Nudge Card - Signature Geometric Indigo Panel */}
-          {!snoozedPriority && (
+          {/* Smart AI Proactive Nudge Card — driven by real dashboard.ai_actions */}
+          {!snoozedPriority && topPriorityAction && (
             <div className="relative overflow-hidden rounded-2xl bg-indigo-900 text-white p-6 shadow-sm border border-indigo-800 space-y-4">
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-2.5">
@@ -76,49 +161,23 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({
                     Compass AI Priority
                   </span>
                 </div>
-                <span className="text-[10px] bg-red-500/20 text-red-200 border border-red-400/30 px-2 py-0.5 rounded font-bold uppercase tracking-wider">
-                  Urgent
-                </span>
               </div>
 
               <div className="space-y-1">
                 <h2 className="text-lg font-semibold text-white leading-snug tracking-tight">
-                  Complete your DBMS Normalization Assignment first
+                  {topPriorityAction.title}
                 </h2>
-                <p className="text-xs text-indigo-200 leading-relaxed">
-                  Due tomorrow at 11:59 PM. Estimated focus session:{' '}
-                  <span className="font-semibold text-white">2 hrs</span>. Clears 35% of this week’s workload!
-                </p>
+                <p className="text-xs text-indigo-200 leading-relaxed">{topPriorityAction.meta}</p>
               </div>
 
               <div className="pt-2 flex items-center justify-between gap-2.5">
                 <button
-                  onClick={handleStartTask}
-                  className={`flex-1 inline-flex items-center justify-center gap-2 px-4 py-2.5 rounded-lg font-medium text-xs shadow-xs transition-all active:scale-[0.98] cursor-pointer ${
-                    taskStarted
-                      ? 'bg-emerald-600 text-white'
-                      : 'bg-white text-indigo-950 hover:bg-indigo-50'
-                  }`}
+                  onClick={() => onNavigateTab(topPriorityAction.tab as NavTab)}
+                  className="flex-1 inline-flex items-center justify-center gap-2 px-4 py-2.5 rounded-lg font-medium text-xs shadow-xs transition-all active:scale-[0.98] cursor-pointer bg-white text-indigo-950 hover:bg-indigo-50"
                   type="button"
                 >
-                  {activeTaskStarting ? (
-                    <>
-                      <span className="material-symbols-outlined text-[16px] animate-spin">
-                        progress_activity
-                      </span>
-                      <span>Launching Focus Mode...</span>
-                    </>
-                  ) : taskStarted ? (
-                    <>
-                      <span className="material-symbols-outlined text-[16px]">check</span>
-                      <span>Focus Timer Active (2h)</span>
-                    </>
-                  ) : (
-                    <>
-                      <span className="material-symbols-outlined text-[16px]">play_arrow</span>
-                      <span>Start Task (2 hrs)</span>
-                    </>
-                  )}
+                  <span className="material-symbols-outlined text-[16px]">{topPriorityAction.icon}</span>
+                  <span>Open</span>
                 </button>
 
                 <button
@@ -142,7 +201,7 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({
             </div>
           )}
 
-          {/* Today's Focus Action Section */}
+          {/* Today's Focus Action Section — real study sessions from /dashboard */}
           <div className="bg-white rounded-2xl p-6 shadow-xs space-y-4 border border-gray-200">
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-2">
@@ -150,17 +209,18 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({
                 <h3 className="text-base font-semibold text-[#1a1a1a] tracking-tight">Today's Focus</h3>
               </div>
               <span className="text-[10px] font-bold uppercase tracking-widest px-2.5 py-1 rounded-md bg-gray-100 text-gray-700">
-                {completedCount} of {tasks.length} complete
+                {completedCount} of {dashboard.tasks.length} complete
               </span>
             </div>
 
-            {/* Interactive Task Items */}
-            <div className="space-y-2">
-              {tasks.map((task) => {
-                const isPriority = task.priority === 'High';
-                const isMedium = task.priority === 'Medium';
-
-                return (
+            {dashboard.tasks.length === 0 ? (
+              <div className="py-8 text-center space-y-2">
+                <span className="material-symbols-outlined text-[28px] text-gray-300">event_available</span>
+                <p className="text-xs text-gray-500">No study sessions yet. Add one from the Academics tab.</p>
+              </div>
+            ) : (
+              <div className="space-y-2">
+                {dashboard.tasks.map((task) => (
                   <div
                     key={task.id}
                     className={`task-item group flex items-start justify-between p-3.5 rounded-xl border transition-all ${
@@ -171,7 +231,8 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({
                   >
                     <div className="flex items-start gap-3 min-w-0">
                       <button
-                        onClick={() => onToggleTask(task.id)}
+                        onClick={() => handleToggleTask(task.id, task.completed)}
+                        disabled={togglingTaskId === task.id}
                         className={`mt-0.5 w-5 h-5 rounded-md flex items-center justify-center transition-all cursor-pointer ${
                           task.completed
                             ? 'bg-indigo-600 text-white'
@@ -191,44 +252,27 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({
 
                       <div className="min-w-0">
                         <span
-                          onClick={() => onToggleTask(task.id)}
+                          onClick={() => handleToggleTask(task.id, task.completed)}
                           className={`text-sm block font-medium truncate cursor-pointer ${
                             task.completed ? 'line-through text-gray-400' : 'text-[#1a1a1a]'
                           }`}
                         >
                           {task.title}
                         </span>
-                        <div className="flex items-center gap-2 mt-1 text-gray-500 text-xs">
-                          <span className="flex items-center gap-1">
-                            <span className="material-symbols-outlined text-[13px]">schedule</span>
-                            {task.dueTime}
-                          </span>
-                          <span>•</span>
-                          <span className="flex items-center gap-1">
-                            <span className="material-symbols-outlined text-[13px]">timer</span>
-                            {task.duration}
-                          </span>
-                        </div>
                       </div>
                     </div>
 
                     <span
                       className={`shrink-0 px-2 py-0.5 rounded text-[10px] font-bold uppercase tracking-wider ml-2 ${
-                        task.completed
-                          ? 'bg-gray-100 text-gray-500'
-                          : isPriority
-                          ? 'bg-red-50 text-red-700'
-                          : isMedium
-                          ? 'bg-indigo-50 text-indigo-700'
-                          : 'bg-gray-100 text-gray-600'
+                        task.completed ? 'bg-gray-100 text-gray-500' : 'bg-indigo-50 text-indigo-700'
                       }`}
                     >
-                      {task.completed ? 'Done' : task.priority}
+                      {task.completed ? 'Done' : task.category}
                     </span>
                   </div>
-                );
-              })}
-            </div>
+                ))}
+              </div>
+            )}
           </div>
         </div>
 
@@ -244,7 +288,7 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({
             </div>
 
             <div className="grid grid-cols-1 gap-4">
-              {/* Budget Snapshot */}
+              {/* Budget Snapshot — driven by /budget/summary and /dashboard */}
               <div
                 onClick={() => onNavigateTab('finance')}
                 className="bg-white rounded-2xl p-6 shadow-xs space-y-4 cursor-pointer hover:border-gray-300 border border-gray-200 transition-all"
@@ -264,75 +308,44 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({
                         Monthly Budget
                       </span>
                       <span className="text-3xl font-light text-[#1a1a1a] tracking-tight">
-                        ₹2,500 <span className="text-xs text-gray-400 font-normal">left</span>
+                        ₹{dashboard.remaining_budget.toFixed(0)}{' '}
+                        <span className="text-xs text-gray-400 font-normal">left</span>
                       </span>
                     </div>
                   </div>
-                  <span className="px-2.5 py-1 rounded text-[10px] font-bold uppercase tracking-wider bg-emerald-50 text-emerald-700 border border-emerald-200/50">
-                    Healthy
+                  <span
+                    className={`px-2.5 py-1 rounded text-[10px] font-bold uppercase tracking-wider border ${
+                      budgetHealthy
+                        ? 'bg-emerald-50 text-emerald-700 border-emerald-200/50'
+                        : 'bg-amber-50 text-amber-700 border-amber-200/50'
+                    }`}
+                  >
+                    {budgetHealthy ? 'Healthy' : 'Watch'}
                   </span>
                 </div>
 
-                {/* Weekly mini bar visual */}
                 <div className="space-y-2 pt-1">
                   <div className="flex justify-between items-center text-gray-500 text-xs font-medium">
-                    <span>Spent ₹4,500 of ₹7,000</span>
-                    <span className="font-semibold text-[#1a1a1a]">64% spent</span>
+                    <span>
+                      Spent ₹{spentSoFar.toFixed(0)} of ₹{budget.monthly_budget.toFixed(0)}
+                    </span>
+                    <span className="font-semibold text-[#1a1a1a]">{budgetPercent}% spent</span>
                   </div>
                   <div className="w-full h-1.5 rounded-full bg-gray-100 overflow-hidden flex">
                     <div
                       className="bg-indigo-600 h-full rounded-full transition-all duration-500"
-                      style={{ width: '64%' }}
+                      style={{ width: `${budgetPercent}%` }}
                     />
                   </div>
-
-                  <div className="flex items-end justify-between pt-3 px-2 h-14">
-                    {[
-                      { id: 'mon', day: 'M', label: 'Mon', h: 'h-6', val: '₹130' },
-                      { id: 'tue', day: 'T', label: 'Tue', h: 'h-8', val: '₹170' },
-                      { id: 'wed', day: 'W', label: 'Wed', h: 'h-12', val: '₹240', isCurrent: true },
-                      { id: 'thu', day: 'T', label: 'Thu', h: 'h-5', val: '₹110' },
-                      { id: 'fri', day: 'F', label: 'Fri', h: 'h-9', val: '₹180' },
-                      { id: 'sat', day: 'S', label: 'Sat', h: 'h-4', val: '₹90' },
-                      { id: 'sun', day: 'S', label: 'Sun', h: 'h-2', val: '₹40' }
-                    ].map((item) => (
-                      <button
-                        key={item.id}
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          setSelectedSpotDay(item.id);
-                        }}
-                        type="button"
-                        className="flex flex-col items-center gap-1.5 group cursor-pointer focus:outline-none"
-                        title={`${item.label}: ${item.val}`}
-                      >
-                        <div
-                          className={`w-4 rounded-t-sm transition-all ${item.h} ${
-                            selectedSpotDay === item.id
-                              ? 'bg-indigo-600'
-                              : item.isCurrent
-                              ? 'bg-indigo-600'
-                              : 'bg-gray-100 group-hover:bg-indigo-200'
-                          }`}
-                        />
-                        <span
-                          className={`text-[10px] font-semibold uppercase ${
-                            selectedSpotDay === item.id
-                              ? 'text-indigo-600 font-bold'
-                              : 'text-gray-400'
-                          }`}
-                        >
-                          {item.day}
-                        </span>
-                      </button>
-                    ))}
-                  </div>
+                  {budget.suggestions[0] && (
+                    <p className="text-[11px] text-gray-500 pt-1">{budget.suggestions[0]}</p>
+                  )}
                 </div>
               </div>
 
               {/* Career & Academic Side-by-Side Dual Card */}
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                {/* Career Snapshot */}
+                {/* Career Snapshot — from profile.target_role + /placement-readiness */}
                 <div
                   onClick={() => onNavigateTab('academics')}
                   className="bg-white rounded-2xl p-5 shadow-xs flex flex-col justify-between space-y-3 cursor-pointer hover:border-gray-300 border border-gray-200 transition-all"
@@ -345,24 +358,24 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({
                       Career Target
                     </span>
                     <span className="text-base font-semibold text-[#1a1a1a] block leading-tight tracking-tight">
-                      Full-Stack Dev
+                      {profile.target_role || 'Not set yet'}
                     </span>
                   </div>
                   <div className="pt-2">
                     <div className="flex items-center justify-between text-gray-500 text-xs mb-1.5">
                       <span>Readiness</span>
-                      <span className="text-indigo-600 font-bold">74%</span>
+                      <span className="text-indigo-600 font-bold">{Math.round(placement.overall_score)}%</span>
                     </div>
                     <div className="w-full h-1.5 rounded-full bg-gray-100 overflow-hidden">
-                      <div className="bg-indigo-600 h-full rounded-full" style={{ width: '74%' }} />
+                      <div
+                        className="bg-indigo-600 h-full rounded-full"
+                        style={{ width: `${placement.overall_score}%` }}
+                      />
                     </div>
-                    <span className="inline-flex items-center gap-1 text-xs text-indigo-600 font-semibold mt-2.5">
-                      <span className="material-symbols-outlined text-[13px]">near_me</span> 8 open roles
-                    </span>
                   </div>
                 </div>
 
-                {/* Academic Performance Snapshot */}
+                {/* Academic Performance Snapshot — from profile + /dashboard + /risk/predict */}
                 <div
                   onClick={() => onNavigateTab('insights')}
                   className="bg-white rounded-2xl p-5 shadow-xs flex flex-col justify-between space-y-3 cursor-pointer hover:border-gray-300 border border-gray-200 transition-all"
@@ -375,16 +388,30 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({
                       Current GPA
                     </span>
                     <div className="flex items-baseline gap-1">
-                      <span className="text-3xl font-light text-[#1a1a1a] tracking-tight">3.82</span>
+                      <span className="text-3xl font-light text-[#1a1a1a] tracking-tight">
+                        {profile.current_gpa > 0 ? profile.current_gpa.toFixed(2) : '—'}
+                      </span>
                       <span className="text-xs text-gray-400">/ 4.0</span>
                     </div>
                   </div>
                   <div className="pt-2">
                     <div className="flex items-center gap-1.5">
-                      <span className="w-2 h-2 rounded-full bg-emerald-500"></span>
-                      <span className="text-xs text-gray-700 font-medium">92% consistency</span>
+                      <span
+                        className={`w-2 h-2 rounded-full ${
+                          risk.risk_level === 'Low'
+                            ? 'bg-emerald-500'
+                            : risk.risk_level === 'Moderate'
+                            ? 'bg-amber-500'
+                            : 'bg-red-500'
+                        }`}
+                      ></span>
+                      <span className="text-xs text-gray-700 font-medium">
+                        {Math.round(dashboard.academic_index)}% academic index
+                      </span>
                     </div>
-                    <span className="text-[10px] text-gray-400 uppercase tracking-wider block mt-1">Risk: Minimal</span>
+                    <span className="text-[10px] text-gray-400 uppercase tracking-wider block mt-1">
+                      Burnout Risk: {risk.risk_level}
+                    </span>
                   </div>
                 </div>
               </div>
@@ -393,7 +420,7 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({
         </div>
       </div>
 
-      {/* Nearby Services & Campus Essentials Responsive Section */}
+      {/* Nearby Services & Campus Essentials — still mock, pending Explore backend */}
       <div className="space-y-3 pt-2">
         <div className="flex items-center justify-between px-1">
           <div className="flex items-center gap-2">
@@ -405,11 +432,10 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({
             className="text-xs text-indigo-600 font-semibold hover:underline cursor-pointer"
             type="button"
           >
-            University District →
+            View all →
           </button>
         </div>
 
-        {/* Scrollable Horizontal Carousel on Mobile, Grid on Tablet/Desktop */}
         <div className="flex gap-3 overflow-x-auto pb-2 pt-0.5 no-scrollbar -mx-4 px-4 sm:mx-0 sm:px-0 sm:grid sm:grid-cols-2 md:grid-cols-4 sm:overflow-visible">
           {spots.slice(0, 4).map((spot) => (
             <div
@@ -418,20 +444,13 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({
               className="shrink-0 w-44 sm:w-auto bg-white rounded-2xl p-3 shadow-xs space-y-2 cursor-pointer hover:border-gray-300 transition-all active:scale-[0.98] border border-gray-200"
             >
               <div className="h-28 sm:h-32 w-full rounded-xl overflow-hidden relative">
-                <img
-                  className="w-full h-full object-cover"
-                  src={spot.imageUrl}
-                  alt={spot.name}
-                  loading="lazy"
-                />
+                <img className="w-full h-full object-cover" src={spot.imageUrl} alt={spot.name} loading="lazy" />
                 <span className="absolute top-1.5 right-1.5 px-2 py-0.5 rounded bg-white/90 backdrop-blur-sm text-[#1a1a1a] text-[10px] font-bold shadow-xs">
                   {spot.distance}
                 </span>
               </div>
               <div>
-                <span className="text-xs font-semibold text-[#1a1a1a] block truncate">
-                  {spot.name}
-                </span>
+                <span className="text-xs font-semibold text-[#1a1a1a] block truncate">{spot.name}</span>
                 <span className="text-[10px] text-gray-500 block truncate uppercase tracking-wider mt-0.5">
                   {spot.tags[0] || spot.categoryLabel}
                 </span>
@@ -441,10 +460,16 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({
         </div>
       </div>
 
-      {/* Encouragement Footer Badge */}
+      {/* Encouragement Footer — derived from real completion ratio, not a fixed claim */}
       <div className="py-2 flex items-center justify-center gap-2 text-gray-400 text-xs">
         <span className="material-symbols-outlined text-[16px] text-indigo-600">check_circle</span>
-        <span>You're on track to wrap up assignments by 4:00 PM today.</span>
+        <span>
+          {dashboard.tasks.length === 0
+            ? 'Add your first study session to get personalized nudges.'
+            : completedCount === dashboard.tasks.length
+            ? "You're all caught up for today!"
+            : `${dashboard.tasks.length - completedCount} task${dashboard.tasks.length - completedCount === 1 ? '' : 's'} remaining today.`}
+        </span>
       </div>
     </div>
   );

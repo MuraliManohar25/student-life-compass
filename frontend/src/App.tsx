@@ -43,12 +43,6 @@ function AppShell() {
   const [isNotificationsOpen, setIsNotificationsOpen] = useState(false);
 
   // Handlers
-  const handleToggleTask = (id: string) => {
-    setTasks((prev) =>
-      prev.map((t) => (t.id === id ? { ...t, completed: !t.completed } : t))
-    );
-  };
-
   const handleAddScheduleItem = (newBlock: ScheduleBlock) => {
     setSchedule((prev) => [...prev, newBlock]);
   };
@@ -103,8 +97,6 @@ function AppShell() {
         <div className="max-w-[1400px] mx-auto w-full">
           {currentTab === 'home' && (
             <HomeScreen
-              tasks={tasks}
-              onToggleTask={handleToggleTask}
               onNavigateTab={(tab) => setCurrentTab(tab)}
               onOpenStudyGuide={handleOpenStudyGuide}
               spots={spots}
