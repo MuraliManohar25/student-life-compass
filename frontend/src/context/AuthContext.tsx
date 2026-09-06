@@ -1,119 +1,84 @@
-/**
- * @license
- * SPDX-License-Identifier: Apache-2.0
- */
-
-import React, { createContext, useContext, useEffect, useState, useCallback } from 'react';
-import {
-  getToken,
-  getMe,
-  login as apiLogin,
-  signup as apiSignup,
-  logout as apiLogout,
-  CurrentUser,
-} from '../lib/api';
+import React, { createContext, useContext, useState, useEffect } from "react";
+import { authApi } from "../services/api";
 
 interface AuthContextValue {
-  user: CurrentUser | null;
   isAuthenticated: boolean;
-  isLoading: boolean;
-  error: string | null;
-  login: (email: string, password: string) => Promise<void>;
-  signup: (email: string, password: string, fullName: string) => Promise<void>;
-  logout: () => void;
-  clearError: () => void;
+  user: any;
+  loading: boolean;
+  signUp: (email: string, password: string, fullName: string) => Promise<void>;
+  logIn: (email: string, password: string) => Promise<void>;
+  logOut: () => Promise<void>;
+  forgotPassword: (email: string) => Promise<void>;
+  resetPassword: (token: string, newPassword: string) => Promise<void>;
+  getMe: () => Promise<void>;
 }
 
 const AuthContext = createContext<AuthContextValue | undefined>(undefined);
 
-export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
-  const [user, setUser] = useState<CurrentUser | null>(null);
-  const [isLoading, setIsLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
+export function AuthProvider({ children }: { children: React.ReactNode }) {
+  const [isAuthenticated, setIsAuthenticated] = useState(false);
+  const [user, setUser] = useState<any>(null);
+  const [loading, setLoading] = useState(true);
 
-  // On first load, if a valid-looking token exists, try to resolve the current user.
   useEffect(() => {
-    const token = getToken();
-    if (!token) {
-      setIsLoading(false);
-      return;
+    async function bootstrap() {
+      try {
+        const meData = await authApi.getMe();
+        setUser(meData);
+        setIsAuthenticated(!!meData?.access_token);
+      } catch {
+        setIsAuthenticated(false);
+      }
+      setLoading(false);
     }
-    getMe()
-      .then((me) => setUser(me))
-      .catch(() => {
-        // Token is invalid/expired - clear it silently and fall back to logged-out state.
-        apiLogout();
-        setUser(null);
-      })
-      .finally(() => setIsLoading(false));
+    bootstrap();
   }, []);
 
-  const login = useCallback(async (email: string, password: string) => {
-    setError(null);
-    try {
-      const token = await apiLogin({ email, password });
-      setUser({
-        id: token.user_id,
-        email: token.email,
-        full_name: token.full_name,
-        role: 'student',
-        created_at: new Date().toISOString(),
-      });
-      // Refresh with the authoritative record from /auth/me
-      getMe().then(setUser).catch(() => {});
-    } catch (err: any) {
-      setError(err?.message || 'Login failed. Please check your credentials.');
-      throw err;
-    }
-  }, []);
+  const signUp = async (email: string, password: string, fullName: string) => {
+    const res = await authApi.register(email, password, fullName);
+    setIsAuthenticated(true);
+    setUser(res.user);
+  };
 
-  const signup = useCallback(async (email: string, password: string, fullName: string) => {
-    setError(null);
-    try {
-      const token = await apiSignup({ email, password, full_name: fullName });
-      setUser({
-        id: token.user_id,
-        email: token.email,
-        full_name: token.full_name,
-        role: 'student',
-        created_at: new Date().toISOString(),
-      });
-      getMe().then(setUser).catch(() => {});
-    } catch (err: any) {
-      setError(err?.message || 'Could not create your account.');
-      throw err;
+  const logIn = async (email: string, password: string) => {
+    const res = await authApi.login(email, password);
+    if (res.access_token) {
+      localStorage.setItem("token", res.access_token);
     }
-  }, []);
+    setIsAuthenticated(true);
+    setUser(res);
+  };
 
-  const logout = useCallback(() => {
-    apiLogout();
+  const logOut = async () => {
+    localStorage.removeItem("token");
+    setIsAuthenticated(false);
     setUser(null);
-  }, []);
+  };
 
-  const clearError = useCallback(() => setError(null), []);
+  const forgotPassword = async (email: string) => {
+    await authApi.forgotPassword(email);
+  };
+
+  const resetPassword = async (token: string, newPassword: string) => {
+    await authApi.resetPassword(token, newPassword);
+  };
+
+  const getMe = async () => {
+    const res = await authApi.getMe();
+    return res;
+  };
 
   return (
-    <AuthContext.Provider
-      value={{
-        user,
-        isAuthenticated: !!user,
-        isLoading,
-        error,
-        login,
-        signup,
-        logout,
-        clearError,
-      }}
-    >
+    <AuthContext.Provider value={{ isAuthenticated, user, loading, signUp, logIn, logOut, forgotPassword, resetPassword, getMe }}>
       {children}
     </AuthContext.Provider>
   );
-};
+}
 
-export function useAuth(): AuthContextValue {
+export function useAuth() {
   const ctx = useContext(AuthContext);
   if (!ctx) {
-    throw new Error('useAuth must be used within an AuthProvider');
+    throw new Error("useAuth must be used within AuthProvider");
   }
   return ctx;
 }
