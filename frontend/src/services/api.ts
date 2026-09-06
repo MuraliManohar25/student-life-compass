@@ -177,27 +177,27 @@ export const studyApi = {
 // Budget Manager API - uses /api/finance endpoints
 export const budgetApi = {
   getExpenses: async () => {
-    const res = await apiClient.get('/api/finance/expenses');
+    const res = await apiClient.get('/finance/expenses');
     return res.data;
   },
   createExpense: async (expense: { title: string; amount: number; category: string; date?: string }) => {
-    const res = await apiClient.post('/api/finance/expenses', expense);
+    const res = await apiClient.post('/finance/expenses', expense);
     return res.data;
   },
   updateExpense: async (id: number, expense: { title: string; amount: number; category: string; date?: string }) => {
-    const res = await apiClient.put(`/api/finance/expenses/${id}`, expense);
+    const res = await apiClient.put(`/finance/expenses/${id}`, expense);
     return res.data;
   },
   deleteExpense: async (id: number) => {
-    const res = await apiClient.delete(`/api/finance/expenses/${id}`);
+    const res = await apiClient.delete(`/finance/expenses/${id}`);
     return res.data;
   },
   getSummary: async () => {
-    const res = await apiClient.get('/api/finance/budget/summary');
+    const res = await apiClient.get('/finance/budget/summary');
     return res.data;
   },
   getRemainingBudget: async () => {
-    const res = await apiClient.get('/api/finance/budget/summary');
+    const res = await apiClient.get('/finance/budget/summary');
     return res.data as { remaining_budget: number };
   },
 };

@@ -201,6 +201,10 @@ export async function getMyProfile(): Promise<ProfileOut> {
   return request<ProfileOut>('/profile/me');
 }
 
+export async function updateMyProfile(data: { college: string; major: string; current_gpa: number; target_gpa: number; target_role: string; sleep_hours: number; monthly_budget: number; skills: Array<{ name: string; proficiency_score: number }> }): Promise<void> {
+  return request<void>('/profile/me', { method: 'PUT', body: data });
+}
+
 export async function getDashboard(): Promise<DashboardResponse> {
   return request<DashboardResponse>('/dashboard');
 }
@@ -215,11 +219,32 @@ export interface BudgetSummaryResponse {
   predicted_monthly_total: number;
   forecast_confidence: number;
   suggestions: string[];
+  utilization_percentage: number;
+  category_breakdown: Record<string, number>;
+  weekly_spending: Array<{ day: string; amount: number }>;
 }
 
 export async function getBudgetSummary(): Promise<BudgetSummaryResponse> {
-  return request<BudgetSummaryResponse>('/budget/summary');
+  return request<BudgetSummaryResponse>('/finance/budget/summary');
 }
+
+export interface ExpenseOut { id: number; user_id: number; title: string; amount: number; category: string; description: string; notes: string; date: string }
+export async function getExpenses(): Promise<ExpenseOut[]> { return request<ExpenseOut[]>('/finance/expenses'); }
+export async function createExpense(data: Omit<ExpenseOut, 'id' | 'user_id' | 'description' | 'notes'> & Partial<Pick<ExpenseOut, 'description' | 'notes'>>): Promise<ExpenseOut> {
+  return request<ExpenseOut>('/finance/expenses', { method: 'POST', body: data });
+}
+export async function deleteExpense(id: number): Promise<void> { return request<void>(`/finance/expenses/${id}`, { method: 'DELETE' }); }
+
+export interface TaskRecord { id: number; title: string; description: string; priority: string; difficulty: string; deadline: string | null; estimated_minutes: number; status: string; priority_score: number; reason: string }
+export async function getTasks(): Promise<TaskRecord[]> { return request<TaskRecord[]>('/tasks'); }
+export async function getSequencedTasks(): Promise<TaskRecord[]> { return request<TaskRecord[]>('/tasks/sequencer'); }
+export async function createTask(data: { title: string; description?: string; subject_id?: number; priority?: string; difficulty?: string; deadline?: string; estimated_minutes?: number }): Promise<TaskRecord> { return request<TaskRecord>('/tasks', { method: 'POST', body: data }); }
+export async function updateTask(id: number, data: Partial<TaskRecord>): Promise<TaskRecord> { return request<TaskRecord>(`/tasks/${id}`, { method: 'PUT', body: data }); }
+
+export interface NotificationRecord { id: number; title: string; message: string; category: string; is_read: boolean; created_at: string }
+export async function getNotifications(): Promise<NotificationRecord[]> { return request<NotificationRecord[]>('/notifications'); }
+export async function markNotificationRead(id: number): Promise<void> { return request<void>(`/notifications/${id}/read`, { method: 'PUT' }); }
+export async function generateNotifications(): Promise<void> { return request<void>('/notifications/generate', { method: 'POST' }); }
 
 export interface RiskPredictionResponse {
   burnout_risk_score: number;

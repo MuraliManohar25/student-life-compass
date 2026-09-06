@@ -2,7 +2,7 @@ from fastapi import APIRouter, Depends
 from sqlalchemy.orm import Session
 from app.core.database import get_db
 from app.core.security import get_current_user
-from app.models.models import User, Profile, StudySession
+from app.models.models import User, Profile, StudySession, Task
 from app.schemas.schemas import RiskPredictionResponse
 from app.services.ml_service import ml_service
 
@@ -17,10 +17,10 @@ def predict_academic_risk(
     sessions = db.query(StudySession).filter(StudySession.user_id == current_user.id).all()
 
     upcoming_exams = sum(1 for s in sessions if "exam" in s.title.lower() or "mid-term" in s.title.lower())
-    pending_assignments = sum(1 for s in sessions if s.status != "Done")
+    pending_assignments = sum(1 for s in sessions if s.status != "Done") + db.query(Task).filter(Task.user_id == current_user.id, Task.status != "Completed").count()
 
-    sleep_hrs = profile.sleep_hours if profile else 6.2
-    gpa = profile.current_gpa if profile else 3.88
+    sleep_hrs = profile.sleep_hours if profile and profile.sleep_hours else 0
+    gpa = profile.current_gpa if profile and profile.current_gpa else 0
     # Compute workload density from real data (normalized to 0-100 scale)
     workload = min(100.0, ((pending_assignments or 0) * 15 + (upcoming_exams or 0) * 20))
 

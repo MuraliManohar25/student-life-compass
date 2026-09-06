@@ -3,7 +3,8 @@ from sqlalchemy.orm import Session
 from datetime import datetime
 from app.core.database import get_db
 from app.core.security import get_current_user
-from app.models.models import User, Profile, StudySession, Expense, BudgetPrediction, PlacementProgress, Skill
+from app.models.models import User, Profile, StudySession, PlacementProgress, Skill, Task
+from app.services.student_service import finance_summary, task_priority
 
 router = APIRouter(prefix="/dashboard", tags=["Morning Dashboard"])
 
@@ -58,15 +59,14 @@ def get_dashboard(
     db: Session = Depends(get_db)
 ):
     profile = db.query(Profile).filter(Profile.user_id == current_user.id).first()
-    expenses = db.query(Expense).filter(Expense.user_id == current_user.id).all()
-    total_spent = sum(e.amount for e in expenses)
     sessions = db.query(StudySession).filter(StudySession.user_id == current_user.id).all()
     placements = db.query(PlacementProgress).filter(PlacementProgress.user_id == current_user.id).all()
 
-    budget_pred = db.query(BudgetPrediction).filter(BudgetPrediction.user_id == current_user.id).first()
-    monthly_budget = budget_pred.monthly_budget if (budget_pred and budget_pred.monthly_budget > 0) else 5000.0
-    remaining_budget = max(0.0, monthly_budget - total_spent)
-    daily_limit = budget_pred.daily_cap if (budget_pred and budget_pred.daily_cap > 0) else round(monthly_budget / 30.0, 2)
+    finance = finance_summary(db, current_user.id)
+    remaining_budget = finance["remaining_budget"]
+    monthly_budget = finance["monthly_budget"]
+    daily_limit = round(monthly_budget / 30.0, 2) if monthly_budget else 0
+    db_tasks = db.query(Task).filter(Task.user_id == current_user.id).all()
 
     tasks_list = [
         {
@@ -77,6 +77,8 @@ def get_dashboard(
         }
         for s in sessions
     ]
+    tasks_list += [{"id": str(t.id), "title": t.title, "completed": t.status == "Completed", "category": t.priority}
+                   for t in db_tasks]
 
     timeline_events = [
         {
@@ -91,14 +93,16 @@ def get_dashboard(
 
     # Calculate user scores dynamically
     completed_sessions = sum(1 for s in sessions if s.status == "Done")
-    session_completion_rate = (completed_sessions / max(1, len(sessions))) * 100 if sessions else 70.0
-    gpa_pct = ((profile.current_gpa / 4.0) * 100) if (profile and profile.current_gpa > 0) else 75.0
-    academic_index = round((gpa_pct * 0.6) + (session_completion_rate * 0.4), 1)
+    total_items = len(sessions) + len(db_tasks)
+    completed_items = completed_sessions + sum(t.status == "Completed" for t in db_tasks)
+    session_completion_rate = (completed_items / total_items) * 100 if total_items else 0
+    gpa_pct = ((profile.current_gpa / 4.0) * 100) if (profile and profile.current_gpa > 0) else 0
+    academic_index = round((gpa_pct * 0.6) + (session_completion_rate * 0.4), 1) if profile else 0
 
     if placements:
         placement_odds = round(sum(p.match_percentage for p in placements) / len(placements), 1)
     else:
-        placement_odds = 70.0 if (profile and profile.target_role) else 50.0
+        placement_odds = profile.market_match_index if profile else 0.0
 
     intelligence_score = round((academic_index * 0.5) + (placement_odds * 0.5), 1)
 
@@ -138,7 +142,7 @@ def get_dashboard(
         "user_name": current_user.full_name or "Student",
         "cohort_standing": profile.cohort_standing if profile else "Standard",
         "intelligence_score": intelligence_score,
-        "score_trend": "+4%",
+        "score_trend": "Derived from your current academic and career data",
         "remaining_budget": round(remaining_budget, 2),
         "daily_budget_limit": round(daily_limit, 2),
         "academic_index": academic_index,

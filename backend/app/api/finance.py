@@ -1,12 +1,12 @@
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.orm import Session
 from typing import List, Optional
-from datetime import datetime, timedelta, date
+from datetime import datetime, timedelta, date, timezone
 import calendar
 from app.core.database import get_db
 from app.core.security import get_current_user
 from app.models.models import User, Expense, BudgetPrediction
-from app.schemas.schemas import ExpenseOut, BudgetSummaryResponse
+from app.schemas.schemas import ExpenseOut, ExpenseCreate, BudgetSummaryResponse
 
 router = APIRouter(prefix="/finance", tags=["Finance"])
 
@@ -21,9 +21,11 @@ def get_budget_summary(
         BudgetPrediction.user_id == current_user.id
     ).first()
     
-    monthly_budget = budget_pred.monthly_budget if budget_pred and budget_pred.monthly_budget > 0 else 5000.0
+    monthly_budget = budget_pred.monthly_budget if budget_pred and budget_pred.monthly_budget > 0 else 0.0
     
+    now = datetime.now(timezone.utc)
     expenses = db.query(Expense).filter(Expense.user_id == current_user.id).all()
+    expenses = [e for e in expenses if e.date and e.date.year == now.year and e.date.month == now.month]
     
     total_spent = sum(e.amount for e in expenses)
     remaining_budget = max(0.0, monthly_budget - total_spent)
@@ -48,6 +50,10 @@ def get_budget_summary(
     days_in_month = calendar.monthrange(today.year, today.month)[1]
     daily_average = round(total_spent / days_in_month, 2) if days_in_month > 0 else 0.0
     daily_cap = budget_pred.daily_cap if budget_pred and budget_pred.daily_cap > 0 else round(monthly_budget / 30, 2)
+    weekly = {}
+    for expense in expenses:
+        label = expense.date.strftime("%a")
+        weekly[label] = round(weekly.get(label, 0) + expense.amount, 2)
     
     return BudgetSummaryResponse(
         total_spent=round(total_spent, 2),
@@ -57,7 +63,9 @@ def get_budget_summary(
         predicted_monthly_total=round(monthly_budget, 2),
         forecast_confidence=round(100 - utilization, 2),
         suggestions=_get_budget_suggestions(utilization, remaining_budget, monthly_budget),
-        category_breakdown=category_totals
+        utilization_percentage=utilization,
+        category_breakdown=category_totals,
+        weekly_spending=[{"day": day, "amount": amount} for day, amount in weekly.items()]
     )
 
 
@@ -74,7 +82,7 @@ def get_expenses(
 
 @router.post("/expenses", response_model=ExpenseOut, status_code=201)
 def create_expense(
-    expense_data: ExpenseOut,
+    expense_data: ExpenseCreate,
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db)
 ):
@@ -88,7 +96,9 @@ def create_expense(
         title=expense_data.title,
         amount=expense_data.amount,
         category=expense_data.category,
-        date=expense_data.date or "Today"
+        description=expense_data.description or "",
+        notes=expense_data.notes or "",
+        date=expense_data.date or datetime.now(timezone.utc)
     )
     db.add(expense)
     db.commit()
@@ -99,7 +109,7 @@ def create_expense(
 @router.put("/expenses/{expense_id}")
 def update_expense(
     expense_id: int,
-    expense_data: ExpenseOut,
+    expense_data: ExpenseCreate,
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db)
 ):
@@ -115,7 +125,10 @@ def update_expense(
     expense.title = expense_data.title
     expense.amount = expense_data.amount
     expense.category = expense_data.category
-    expense.date = expense_data.date or expense.date
+    expense.description = expense_data.description or ""
+    expense.notes = expense_data.notes or ""
+    if expense_data.date:
+        expense.date = expense_data.date
     db.commit()
     db.refresh(expense)
     return expense

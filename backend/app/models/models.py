@@ -49,6 +49,10 @@ class Profile(Base):
     resume_score = Column(Float, default=0.0)
     dsa_solved = Column(Integer, default=0)
     github_commits = Column(Integer, default=0)
+    onboarding_completed = Column(Boolean, default=False)
+    semester = Column(String, default="")
+    location_preferences = Column(Text, default="")
+    notification_preferences = Column(Text, default="")
     created_at = Column(DateTime(timezone=True), default=utc_now)
     updated_at = Column(DateTime(timezone=True), default=utc_now, onupdate=utc_now)
 
@@ -123,12 +127,55 @@ class Expense(Base):
     id = Column(Integer, primary_key=True, index=True)
     user_id = Column(Integer, ForeignKey("users.id"), nullable=False)
     title = Column(String, nullable=False)
+    description = Column(Text, default="")
+    notes = Column(Text, default="")
     amount = Column(Float, nullable=False)
     category = Column(String, nullable=False)
-    date = Column(String, nullable=False)
+    date = Column(DateTime(timezone=True), default=utc_now, nullable=False)
     created_at = Column(DateTime(timezone=True), default=utc_now)
 
     user = relationship("User", back_populates="expenses")
+
+
+class Task(Base):
+    __tablename__ = "tasks"
+    id = Column(Integer, primary_key=True)
+    user_id = Column(Integer, ForeignKey("users.id"), nullable=False, index=True)
+    subject_id = Column(Integer, ForeignKey("subjects.id"), nullable=True)
+    title = Column(String, nullable=False)
+    description = Column(Text, default="")
+    priority = Column(String, default="Medium")
+    difficulty = Column(String, default="Medium")
+    deadline = Column(DateTime(timezone=True), nullable=True)
+    estimated_minutes = Column(Integer, default=60)
+    status = Column(String, default="Todo")
+    created_at = Column(DateTime(timezone=True), default=utc_now)
+    updated_at = Column(DateTime(timezone=True), default=utc_now, onupdate=utc_now)
+
+
+class Internship(Base):
+    __tablename__ = "internships"
+    id = Column(Integer, primary_key=True)
+    company = Column(String, nullable=False)
+    role = Column(String, nullable=False)
+    location = Column(String, default="")
+    domain = Column(String, default="")
+    duration = Column(String, default="")
+    stipend = Column(String, default="")
+    eligibility = Column(Text, default="")
+    work_mode = Column(String, default="")
+    skills_required = Column(JSON, default=list)
+    application_url = Column(String, default="")
+    is_demo = Column(Boolean, default=True)
+
+
+class AIConversation(Base):
+    __tablename__ = "ai_conversations"
+    id = Column(Integer, primary_key=True)
+    user_id = Column(Integer, ForeignKey("users.id"), nullable=False, index=True)
+    prompt = Column(Text, nullable=False)
+    reply = Column(Text, nullable=False)
+    created_at = Column(DateTime(timezone=True), default=utc_now)
 
 
 class BudgetPrediction(Base):

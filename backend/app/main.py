@@ -8,7 +8,6 @@ from app.core.config import settings
 from app.core.database import engine, Base, SessionLocal, get_db
 from app.core.security import get_current_user
 from app.models.models import User
-from app.seed_data import seed_database
 from app.schemas.schemas import ProfileOut
 
 # API Routers
@@ -17,12 +16,14 @@ from app.api.profile import router as profile_router, get_my_profile
 from app.api.career import router as career_router
 from app.api.study import router as study_router
 from app.api.budget import router as budget_router
+from app.api.finance import router as finance_router
 from app.api.placement import router as placement_router
 from app.api.risk import router as risk_router
 from app.api.notifications import router as notification_router
 from app.api.reports import router as reports_router
 from app.api.dashboard import router as dashboard_router
 from app.api.ai import router as ai_router
+from app.api.tasks import router as tasks_router
 
 
 from sqlalchemy import text
@@ -38,11 +39,6 @@ async def lifespan(app: FastAPI):
             except Exception as col_err:
                 print(f"Column migration warning: {col_err}")
 
-        db = SessionLocal()
-        try:
-            seed_database(db)
-        finally:
-            db.close()
     except Exception as e:
         print(f"WARNING: Database initialization/seeding failed: {e}")
     yield
@@ -74,12 +70,14 @@ routers = [
     career_router,
     study_router,
     budget_router,
+    finance_router,
     placement_router,
     risk_router,
     notification_router,
     reports_router,
     dashboard_router,
     ai_router,
+    tasks_router,
 ]
 
 for r in routers:

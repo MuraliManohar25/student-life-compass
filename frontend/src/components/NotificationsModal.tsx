@@ -1,4 +1,5 @@
-import React from 'react';
+import React, { useEffect, useState } from 'react';
+import { generateNotifications, getNotifications, markNotificationRead, NotificationRecord } from '../lib/api';
 
 interface NotificationsModalProps {
   isOpen: boolean;
@@ -11,34 +12,16 @@ export const NotificationsModal: React.FC<NotificationsModalProps> = ({
   onClose,
   onNavigateToAcademics
 }) => {
-  if (!isOpen) return null;
+  const [notifications, setNotifications] = useState<NotificationRecord[]>([]);
+  const [loading, setLoading] = useState(false);
 
-  const notifications = [
-    {
-      id: 'n-1',
-      title: 'DBMS Assignment Due Tomorrow',
-      desc: '11:59 PM cutoff. Complete the BCNF step guide to secure 10 marks.',
-      time: '15m ago',
-      type: 'urgent',
-      icon: 'timer'
-    },
-    {
-      id: 'n-2',
-      title: 'Daily Budget Pacing Healthy',
-      desc: 'You saved ₹120 on Thursday lunch. Weekend safe pace increased to ₹277/day.',
-      time: '2h ago',
-      type: 'finance',
-      icon: 'savings'
-    },
-    {
-      id: 'n-3',
-      title: 'Topper Key Uploaded for CS-304',
-      desc: '2023 End-Sem solved schema questions added to verified papers archive.',
-      time: '5h ago',
-      type: 'academic',
-      icon: 'school'
-    }
-  ];
+  useEffect(() => {
+    if (!isOpen) return;
+    setLoading(true);
+    generateNotifications().catch(() => undefined).finally(() => getNotifications().then(setNotifications).catch(() => setNotifications([])).finally(() => setLoading(false)));
+  }, [isOpen]);
+
+  if (!isOpen) return null;
 
   return (
     <div className="fixed inset-0 z-50 flex items-start justify-center bg-black/40 backdrop-blur-xs p-4 pt-16">
@@ -59,11 +42,14 @@ export const NotificationsModal: React.FC<NotificationsModalProps> = ({
         </div>
 
         <div className="space-y-2 max-h-80 overflow-y-auto">
+          {loading && <p className="p-4 text-center text-xs text-gray-500">Loading activity…</p>}
+          {!loading && notifications.length === 0 && <p className="p-4 text-center text-xs text-gray-500">No notifications yet. Alerts are created from deadlines and budget activity.</p>}
           {notifications.map((item) => (
             <div
               key={item.id}
               onClick={() => {
-                if (item.type === 'urgent' || item.type === 'academic') {
+                markNotificationRead(item.id).catch(() => undefined);
+                if (item.category === 'Academic') {
                   onNavigateToAcademics();
                 }
                 onClose();
@@ -74,18 +60,18 @@ export const NotificationsModal: React.FC<NotificationsModalProps> = ({
                 <div className="flex items-center gap-1.5">
                   <span
                     className={`w-1.5 h-1.5 rounded-full ${
-                      item.type === 'urgent'
+                      item.category === 'Academic'
                         ? 'bg-rose-500'
-                        : item.type === 'finance'
+                        : item.category === 'Budget'
                         ? 'bg-emerald-500'
                         : 'bg-indigo-600'
                     }`}
                   />
                   <span className="text-xs font-semibold text-[#1a1a1a]">{item.title}</span>
                 </div>
-                <span className="text-[10px] text-gray-400">{item.time}</span>
+                <span className="text-[10px] text-gray-400">{new Date(item.created_at).toLocaleDateString()}</span>
               </div>
-              <p className="text-xs text-gray-500 leading-snug">{item.desc}</p>
+              <p className="text-xs text-gray-500 leading-snug">{item.message}</p>
             </div>
           ))}
         </div>

@@ -3,7 +3,7 @@ from sqlalchemy.orm import Session
 from app.core.database import get_db
 from app.core.security import get_current_user
 from app.models.models import User, Profile, Skill, BudgetPrediction
-from app.schemas.schemas import ProfileUpdate, ProfileOut
+from app.schemas.schemas import ProfileUpdate, ProfileOut, OnboardingRequest
 
 router = APIRouter(prefix="/profile", tags=["Profile & Onboarding"])
 
@@ -20,18 +20,7 @@ def get_my_profile(
         db.refresh(profile)
 
     budget_pred = db.query(BudgetPrediction).filter(BudgetPrediction.user_id == current_user.id).first()
-    if not budget_pred:
-        budget_pred = BudgetPrediction(
-            user_id=current_user.id,
-            monthly_budget=5000.0,
-            remaining_budget=5000.0,
-            daily_cap=166.67
-        )
-        db.add(budget_pred)
-        db.commit()
-        db.refresh(budget_pred)
-
-    user_monthly_budget = budget_pred.monthly_budget if budget_pred else 5000.0
+    user_monthly_budget = budget_pred.monthly_budget if budget_pred else 0.0
 
     return {
         "id": profile.id,
@@ -45,6 +34,63 @@ def get_my_profile(
         "market_match_index": profile.market_match_index or 0.0,
         "sleep_hours": profile.sleep_hours or 0.0,
         "monthly_budget": user_monthly_budget,
+        "onboarding_completed": getattr(profile, "onboarding_completed", False),
+    }
+
+@router.post("/onboarding")
+def complete_onboarding(
+    payload: OnboardingRequest,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db)
+):
+    profile = db.query(Profile).filter(Profile.user_id == current_user.id).first()
+    if not profile:
+        profile = Profile(user_id=current_user.id)
+        db.add(profile)
+
+    if payload.name:
+        current_user.full_name = payload.name.strip()
+    if payload.college:
+        profile.college = payload.college.strip()
+    if payload.course:
+        profile.major = payload.course.strip()
+    if payload.semester:
+        profile.cohort_standing = payload.semester.strip()
+        profile.semester = payload.semester.strip()
+    if payload.career_goal:
+        profile.target_role = payload.career_goal.strip()
+
+    profile.onboarding_completed = True
+    if payload.location_prefs is not None:
+        profile.location_preferences = payload.location_prefs.strip()
+    if payload.notification_prefs is not None:
+        profile.notification_preferences = payload.notification_prefs.strip()
+
+    if payload.monthly_budget is not None:
+        try:
+            budget_val = float(payload.monthly_budget)
+        except (ValueError, TypeError):
+            raise HTTPException(status_code=422, detail="Monthly budget must be a number")
+
+        budget_pred = db.query(BudgetPrediction).filter(BudgetPrediction.user_id == current_user.id).first()
+        if not budget_pred:
+            budget_pred = BudgetPrediction(
+                user_id=current_user.id,
+                monthly_budget=budget_val,
+                remaining_budget=budget_val,
+                daily_cap=round(budget_val / 30.0, 2)
+            )
+            db.add(budget_pred)
+        else:
+            budget_pred.monthly_budget = budget_val
+            budget_pred.daily_cap = round(budget_val / 30.0, 2)
+
+    db.commit()
+    db.refresh(profile)
+    return {
+        "message": "Onboarding completed successfully!",
+        "status": "ok",
+        "onboarding_completed": True
     }
 
 @router.put("/me")

@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
+import { BudgetSummaryResponse, DashboardResponse, getBudgetSummary, getDashboard, getRiskPrediction, RiskPredictionResponse } from '../lib/api';
 
 interface InsightsScreenProps {
   onOpenStudyGuide: () => void;
@@ -7,6 +8,9 @@ interface InsightsScreenProps {
 export const InsightsScreen: React.FC<InsightsScreenProps> = ({ onOpenStudyGuide }) => {
   const [activeSegment, setActiveSegment] = useState<'performance' | 'risk'>('performance');
   const [appliedRiskAction, setAppliedRiskAction] = useState<string | null>(null);
+  const [dashboard, setDashboard] = useState<DashboardResponse | null>(null);
+  const [budget, setBudget] = useState<BudgetSummaryResponse | null>(null);
+  const [risk, setRisk] = useState<RiskPredictionResponse | null>(null);
   const timeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const handleApplyRisk = (riskId: string, desc: string) => {
@@ -20,6 +24,16 @@ export const InsightsScreen: React.FC<InsightsScreenProps> = ({ onOpenStudyGuide
       if (timeoutRef.current) clearTimeout(timeoutRef.current);
     };
   }, []);
+
+  useEffect(() => {
+    Promise.all([getDashboard(), getBudgetSummary(), getRiskPrediction()])
+      .then(([data, finance, assessment]) => { setDashboard(data); setBudget(finance); setRisk(assessment); })
+      .catch(() => undefined);
+  }, []);
+
+  const studentIndex = dashboard?.intelligence_score ?? 0;
+  const academicIndex = dashboard?.academic_index ?? 0;
+  const budgetSafety = budget ? `${Math.max(0, 100 - budget.utilization_percentage).toFixed(0)}% remaining` : 'No budget data';
 
   return (
     <div className="flex flex-col w-full px-4 sm:px-6 lg:px-8 space-y-6 max-w-[1400px] mx-auto pb-6 pt-1 lg:pt-2">
@@ -56,13 +70,13 @@ export const InsightsScreen: React.FC<InsightsScreenProps> = ({ onOpenStudyGuide
           <div className="space-y-1 min-w-0">
             <div className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded bg-emerald-50 text-emerald-700 text-[10px] font-bold uppercase tracking-wider border border-emerald-200/50">
               <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse"></span>
-              <span>Good Standing</span>
+              <span>{risk ? `${risk.risk_level} risk` : 'Awaiting data'}</span>
             </div>
             <h2 className="text-xl font-semibold text-[#1a1a1a] tracking-tight pt-0.5">
               Student Wellness & Index
             </h2>
             <p className="text-xs text-gray-500 leading-relaxed">
-              Top <strong className="text-[#1a1a1a]">12%</strong> in CS cohort • Consistent weekly rhythm
+              Derived from your saved study, career, and finance data
             </p>
           </div>
 
@@ -87,7 +101,7 @@ export const InsightsScreen: React.FC<InsightsScreenProps> = ({ onOpenStudyGuide
               />
             </svg>
             <div className="absolute flex flex-col items-center justify-center">
-              <span className="text-lg font-light text-[#1a1a1a]">84</span>
+              <span className="text-lg font-light text-[#1a1a1a]">{studentIndex.toFixed(0)}</span>
               <span className="text-[8px] text-gray-400 font-bold uppercase tracking-wider">
                 / 100
               </span>
@@ -98,15 +112,15 @@ export const InsightsScreen: React.FC<InsightsScreenProps> = ({ onOpenStudyGuide
         <div className="grid grid-cols-3 gap-2 mt-4 pt-3 border-t border-gray-100 text-center">
           <div className="p-2.5 rounded-xl bg-gray-50 border border-gray-100">
             <span className="text-[10px] text-gray-400 uppercase tracking-wider block font-semibold">Study Rhythm</span>
-            <span className="text-xs font-semibold text-indigo-600">92% Met</span>
+            <span className="text-xs font-semibold text-indigo-600">{academicIndex.toFixed(0)}% derived</span>
           </div>
           <div className="p-2.5 rounded-xl bg-gray-50 border border-gray-100">
             <span className="text-[10px] text-gray-400 uppercase tracking-wider block font-semibold">Budget Safety</span>
-            <span className="text-xs font-semibold text-emerald-600">Healthy</span>
+            <span className="text-xs font-semibold text-emerald-600">{budgetSafety}</span>
           </div>
           <div className="p-2.5 rounded-xl bg-gray-50 border border-gray-100">
             <span className="text-[10px] text-gray-400 uppercase tracking-wider block font-semibold">Active Alerts</span>
-            <span className="text-xs font-semibold text-rose-600">1 Action</span>
+            <span className="text-xs font-semibold text-rose-600">{risk ? risk.risk_level : 'No assessment'}</span>
           </div>
         </div>
       </div>

@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { ALEX_AVATAR_URL } from '../data/mockData';
 import { useAuth } from '../context/AuthContext';
+import { getBudgetSummary, getMyProfile, ProfileOut, BudgetSummaryResponse, updateMyProfile } from '../lib/api';
 
 interface StudentProfileModalProps {
   isOpen: boolean;
@@ -11,14 +11,23 @@ export const StudentProfileModal: React.FC<StudentProfileModalProps> = ({
   isOpen,
   onClose
 }) => {
-  const [targetGpa, setTargetGpa] = useState('3.85');
-  const [dailyCap, setDailyCap] = useState('350');
+  const [targetGpa, setTargetGpa] = useState('0');
+  const [dailyCap, setDailyCap] = useState('0');
   const [discoveryRadius, setDiscoveryRadius] = useState(2.5);
   const [stepByStepMode, setStepByStepMode] = useState(true);
   const [dailyReminder, setDailyReminder] = useState(true);
   const [savedToast, setSavedToast] = useState(false);
+  const [profile, setProfile] = useState<ProfileOut | null>(null);
+  const [budget, setBudget] = useState<BudgetSummaryResponse | null>(null);
   const timeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const { user, logout } = useAuth();
+
+  useEffect(() => {
+    if (!isOpen) return;
+    Promise.all([getMyProfile(), getBudgetSummary()]).then(([p, b]) => {
+      setProfile(p); setBudget(b); setTargetGpa(String(p.target_gpa || 0)); setDailyCap(String(b.daily_cap || 0));
+    }).catch(() => undefined);
+  }, [isOpen]);
 
   if (!isOpen) return null;
 
@@ -27,7 +36,9 @@ export const StudentProfileModal: React.FC<StudentProfileModalProps> = ({
     onClose();
   };
 
-  const handleSave = () => {
+  const handleSave = async () => {
+    if (!profile || !budget) return;
+    await updateMyProfile({ college: profile.college, major: profile.major, current_gpa: profile.current_gpa, target_gpa: Number(targetGpa) || 0, target_role: profile.target_role, sleep_hours: profile.sleep_hours, monthly_budget: budget.monthly_budget, skills: [] });
     setSavedToast(true);
     if (timeoutRef.current) clearTimeout(timeoutRef.current);
     timeoutRef.current = setTimeout(() => {
@@ -63,11 +74,7 @@ export const StudentProfileModal: React.FC<StudentProfileModalProps> = ({
         {/* Student Identity Card */}
         <div className="p-4 rounded-xl bg-gray-50 flex items-center gap-3.5 border border-gray-100">
           <div className="relative">
-            <img
-              src={ALEX_AVATAR_URL}
-              alt={user?.full_name || 'Student'}
-              className="w-16 h-16 rounded-full object-cover shadow-xs ring-2 ring-indigo-200"
-            />
+            <div className="w-16 h-16 rounded-full bg-indigo-100 text-indigo-700 flex items-center justify-center text-xl font-bold shadow-xs ring-2 ring-indigo-200">{(user?.full_name || 'S').slice(0, 1).toUpperCase()}</div>
             <span className="absolute bottom-0 right-0 w-4 h-4 rounded-full bg-emerald-500 ring-2 ring-white flex items-center justify-center">
               <span className="material-symbols-outlined text-[10px] text-white font-bold">
                 check
@@ -84,8 +91,8 @@ export const StudentProfileModal: React.FC<StudentProfileModalProps> = ({
                 Verified
               </span>
             </div>
-            <p className="text-xs text-gray-500 truncate">{user?.email || 'student@university.edu'}</p>
-            <p className="text-xs text-indigo-600 font-semibold">Profile details coming next</p>
+            <p className="text-xs text-gray-500 truncate">{user?.email || 'No email available'}</p>
+            <p className="text-xs text-indigo-600 font-semibold">{profile?.target_role || 'Add a career goal in onboarding'}</p>
           </div>
         </div>
 
@@ -93,15 +100,15 @@ export const StudentProfileModal: React.FC<StudentProfileModalProps> = ({
         <div className="grid grid-cols-3 gap-2 text-center">
           <div className="p-2.5 rounded-xl bg-gray-50 border border-gray-100">
             <span className="text-[10px] text-gray-400 uppercase tracking-wider block font-semibold">CGPA</span>
-            <span className="text-xs font-semibold text-indigo-600">3.82 / 4.0</span>
+            <span className="text-xs font-semibold text-indigo-600">{profile ? `${profile.current_gpa.toFixed(2)} / 4.0` : 'No data'}</span>
           </div>
           <div className="p-2.5 rounded-xl bg-gray-50 border border-gray-100">
             <span className="text-[10px] text-gray-400 uppercase tracking-wider block font-semibold">Monthly Cap</span>
-            <span className="text-xs font-semibold text-[#1a1a1a]">₹7,000</span>
+            <span className="text-xs font-semibold text-[#1a1a1a]">₹{budget?.monthly_budget.toFixed(0) ?? '0'}</span>
           </div>
           <div className="p-2.5 rounded-xl bg-gray-50 border border-gray-100">
             <span className="text-[10px] text-gray-400 uppercase tracking-wider block font-semibold">Attendance</span>
-            <span className="text-xs font-semibold text-emerald-600">89% Safe</span>
+            <span className="text-xs font-semibold text-emerald-600">{budget ? `${Math.max(0, 100 - budget.utilization_percentage).toFixed(0)}% available` : 'No data'}</span>
           </div>
         </div>
 

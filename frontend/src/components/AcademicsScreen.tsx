@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { AcademicSubTab, ScheduleBlock, TaskItem } from '../types';
+import { createTask, getSequencedTasks, TaskRecord, updateTask } from '../lib/api';
 
 interface AcademicsScreenProps {
   tasks: TaskItem[];
@@ -25,6 +26,8 @@ export const AcademicsScreen: React.FC<AcademicsScreenProps> = ({
   const [activeDay, setActiveDay] = useState(16);
   const [practiceDrillActive, setPracticeDrillActive] = useState(false);
   const [cheatsheetAdded, setCheatsheetAdded] = useState(false);
+  const [sequencedTasks, setSequencedTasks] = useState<TaskRecord[]>([]);
+  const [taskError, setTaskError] = useState<string | null>(null);
 
   // New task form state
   const [taskType, setTaskType] = useState('Assignment');
@@ -36,19 +39,49 @@ export const AcademicsScreen: React.FC<AcademicsScreenProps> = ({
   const [priority, setPriority] = useState('Urgent');
   const [autoSequence, setAutoSequence] = useState(true);
 
-  const handleCreateTask = (e: React.FormEvent) => {
+  const refreshTasks = async () => {
+    try {
+      setSequencedTasks(await getSequencedTasks());
+      setTaskError(null);
+    } catch {
+      setTaskError('Your study tasks could not be loaded. Please retry.');
+    }
+  };
+
+  useEffect(() => { refreshTasks(); }, []);
+
+  const handleCreateTask = async (e: React.FormEvent) => {
     e.preventDefault();
+    const parsedDuration = Number.parseInt(duration, 10) || 60;
+    try {
+      await createTask({
+        title: taskTitle, description: courseModule, priority, difficulty,
+        deadline: deadline.includes('T') ? deadline : undefined,
+        estimated_minutes: duration.includes('h') ? parsedDuration * 60 : parsedDuration,
+      });
+      await refreshTasks();
+    } catch {
+      setTaskError('Task was not saved. Check your connection and try again.');
+      return;
+    }
     const newBlock: ScheduleBlock = {
       id: `task-${Date.now()}`,
       timeRange: '04:00 PM - 06:00 PM',
       title: taskTitle,
       location: `${courseModule} • AI Scheduled`,
       status: autoSequence ? 'AI Sequenced' : 'Scheduled',
-      weightBadge: autoSequence ? '95% PYQ Weight' : undefined,
+      weightBadge: autoSequence ? 'Database-prioritized task' : undefined,
       urgent: priority === 'Urgent'
     };
     onAddScheduleItem(newBlock);
     setIsModalOpen(false);
+  };
+
+  const completeTask = async (task: TaskRecord) => {
+    try {
+      await updateTask(task.id, { status: 'Completed' });
+      await refreshTasks();
+    } catch { setTaskError('Task completion could not be saved.'); }
   };
 
   return (
@@ -189,6 +222,16 @@ export const AcademicsScreen: React.FC<AcademicsScreenProps> = ({
 
               {/* Sequenced Tasks Stack */}
               <div className="space-y-2.5">
+                {taskError && <p className="rounded-xl bg-red-50 p-3 text-xs text-red-700">{taskError}</p>}
+                {sequencedTasks.length === 0 && !taskError && (
+                  <div className="p-4 rounded-2xl border border-dashed border-gray-300 text-sm text-gray-500">No study tasks yet. Add one to receive a real priority score.</div>
+                )}
+                {sequencedTasks.map((task, index) => (
+                  <div key={task.id} className="p-4 rounded-2xl bg-surface-container-lowest shadow-sm flex flex-col space-y-2.5 border border-outline-variant/15">
+                    <div className="flex items-start justify-between gap-2"><div><div className="flex gap-2 flex-wrap"><span className="px-2 py-0.5 rounded-full bg-indigo-50 text-indigo-700 text-[11px] font-bold">{task.priority} priority</span><span className="text-[11px] text-on-surface-variant">{task.estimated_minutes} min</span></div><h4 className="text-[16px] font-bold text-on-surface pt-1">{task.title}</h4><p className="text-[12px] text-on-surface-variant">{task.reason}</p></div><div className="w-9 h-9 rounded-full bg-primary-fixed flex items-center justify-center text-primary font-bold text-[13px]">#{index + 1}</div></div>
+                    <button onClick={() => completeTask(task)} className="py-2 px-3 rounded-xl bg-primary-container text-on-primary text-[13px] font-semibold cursor-pointer" type="button">Complete task</button>
+                  </div>
+                ))}
                 {/* Task 1: High Priority (Active focus) */}
                 <div className="p-4 rounded-2xl bg-surface-container-lowest shadow-sm flex flex-col space-y-2.5 transition-all border border-outline-variant/15 hover:border-primary/30">
                   <div className="flex items-start justify-between gap-2">

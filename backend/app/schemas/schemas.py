@@ -56,9 +56,21 @@ class ProfileOut(BaseModel):
     market_match_index: float
     sleep_hours: float
     monthly_budget: Optional[float] = 0.0
+    onboarding_completed: Optional[bool] = False
 
     class Config:
         from_attributes = True
+
+class OnboardingRequest(BaseModel):
+    name: Optional[str] = None
+    college: Optional[str] = None
+    course: Optional[str] = None
+    semester: Optional[str] = None
+    career_goal: Optional[str] = None
+    monthly_budget: Optional[Any] = None
+    location_prefs: Optional[str] = None
+    notification_prefs: Optional[str] = None
+    study_preferences: Optional[str] = None
 
 # Career Schemas
 class CareerAnalyzeRequest(BaseModel):
@@ -119,7 +131,9 @@ class ExpenseCreate(BaseModel):
     title: str
     amount: float
     category: str
-    date: Optional[str] = "Today"
+    description: Optional[str] = ""
+    notes: Optional[str] = ""
+    date: Optional[datetime] = None
 
 class ExpenseOut(BaseModel):
     id: int
@@ -127,7 +141,9 @@ class ExpenseOut(BaseModel):
     title: str
     amount: float
     category: str
-    date: str
+    description: str = ""
+    notes: str = ""
+    date: datetime
 
     class Config:
         from_attributes = True
@@ -140,6 +156,30 @@ class BudgetSummaryResponse(BaseModel):
     predicted_monthly_total: float
     forecast_confidence: float
     suggestions: List[str]
+    utilization_percentage: float = 0
+    category_breakdown: dict = {}
+    weekly_spending: list = []
+
+
+class TaskCreate(BaseModel):
+    title: str
+    description: str = ""
+    subject_id: Optional[int] = None
+    priority: str = "Medium"
+    difficulty: str = "Medium"
+    deadline: Optional[datetime] = None
+    estimated_minutes: int = 60
+
+
+class TaskUpdate(BaseModel):
+    title: Optional[str] = None
+    description: Optional[str] = None
+    subject_id: Optional[int] = None
+    priority: Optional[str] = None
+    difficulty: Optional[str] = None
+    deadline: Optional[datetime] = None
+    estimated_minutes: Optional[int] = None
+    status: Optional[str] = None
 
 class RemainingBudgetResponse(BaseModel):
     remaining_budget: float

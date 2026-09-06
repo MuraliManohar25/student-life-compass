@@ -4,7 +4,8 @@ from typing import List
 from datetime import datetime, timedelta
 from app.core.database import get_db
 from app.core.security import get_current_user
-from app.models.models import User, Notification
+from app.models.models import User, Notification, Task
+from app.services.student_service import finance_summary
 
 router = APIRouter(prefix="/notifications", tags=["Notifications"])
 
@@ -52,11 +53,13 @@ def generate_notifications(
         n.title for n in db.query(Notification).filter(Notification.user_id == current_user.id).all()
     }
 
-    reminders = [
-        {"title": "Exam Alert", "message": "Operating Systems Mid-Term in 48 hours.", "category": "Exam"},
-        {"title": "Budget Advisory", "message": "Daily spend target is ₹200. Stay on track!", "category": "Budget"},
-        {"title": "Placement Opportunity", "message": "Stripe software intern application deadline approaching.", "category": "Placement"}
-    ]
+    reminders = []
+    overdue = db.query(Task).filter(Task.user_id == current_user.id, Task.status != "Completed", Task.deadline < datetime.now()).count()
+    if overdue:
+        reminders.append({"title": "Overdue study tasks", "message": f"{overdue} task(s) need attention. Start with the highest-priority task.", "category": "Academic"})
+    finance = finance_summary(db, current_user.id)
+    if finance["monthly_budget"] and finance["utilization_percentage"] >= 70:
+        reminders.append({"title": "Budget warning", "message": f"You have used {finance['utilization_percentage']:.0f}% of this month's budget.", "category": "Budget"})
 
     created_count = 0
     for r in reminders:

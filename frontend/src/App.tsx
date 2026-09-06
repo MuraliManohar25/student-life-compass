@@ -5,12 +5,6 @@
 
 import { useState } from 'react';
 import { NavTab, AcademicSubTab, TaskItem, ScheduleBlock, ShoppingItem, StudentSpot } from './types';
-import {
-  INITIAL_TASKS,
-  INITIAL_SCHEDULE,
-  INITIAL_SHOPPING_ITEMS,
-  INITIAL_STUDENT_SPOTS
-} from './data/mockData';
 import { Header } from './components/Header';
 import { Sidebar } from './components/Sidebar';
 import { BottomNav } from './components/BottomNav';
@@ -31,10 +25,10 @@ import { SignupScreen } from './components/SignupScreen';
 function AppShell() {
   const [currentTab, setCurrentTab] = useState<NavTab>('home');
   const [academicSubTab, setAcademicSubTab] = useState<AcademicSubTab>('sequencer');
-  const [tasks, setTasks] = useState<TaskItem[]>(INITIAL_TASKS);
-  const [schedule, setSchedule] = useState<ScheduleBlock[]>(INITIAL_SCHEDULE);
-  const [shoppingItems, setShoppingItems] = useState<ShoppingItem[]>(INITIAL_SHOPPING_ITEMS);
-  const [spots] = useState<StudentSpot[]>(INITIAL_STUDENT_SPOTS);
+  const [tasks] = useState<TaskItem[]>([]);
+  const [schedule, setSchedule] = useState<ScheduleBlock[]>([]);
+  const [shoppingItems, setShoppingItems] = useState<ShoppingItem[]>([]);
+  const [spots] = useState<StudentSpot[]>([]);
 
   // Modals & Overlay Drawers
   const [isCompassAIOpen, setIsCompassAIOpen] = useState(false);
@@ -68,7 +62,7 @@ function AppShell() {
       title,
       location: 'Odegaard Library (Quiet Zone)',
       status: 'AI Sequenced',
-      weightBadge: '95% PYQ Weight'
+      weightBadge: 'AI sequenced from your saved tasks'
     };
     setSchedule((prev) => [...prev, newBlock]);
   };

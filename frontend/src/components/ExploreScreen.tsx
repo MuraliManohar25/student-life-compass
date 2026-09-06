@@ -67,7 +67,7 @@ export const ExploreScreen: React.FC<ExploreScreenProps> = ({ spots }) => {
           <div className="flex items-center gap-1.5">
             <span className="material-symbols-outlined text-indigo-600 text-[18px]">near_me</span>
             <span className="text-xs font-semibold text-[#1a1a1a]">
-              Near North Campus • 500m radius
+              {spots.length ? 'Provider results shown below' : 'Location data is currently unavailable'}
             </span>
           </div>
           <div className="flex items-center gap-1 bg-gray-100 p-0.5 rounded-lg border border-gray-200">
