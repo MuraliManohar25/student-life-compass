@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { AIMessage } from '../types';
-import { INITIAL_AI_MESSAGES } from '../data/mockData';
+import { useAuth } from '../context/AuthContext';
+import { askAi, getDashboard, getMyProfile, ApiError } from '../lib/api';
 
 interface CompassAIDrawerProps {
   isOpen: boolean;
@@ -9,28 +10,48 @@ interface CompassAIDrawerProps {
   onOpenStudyGuide?: () => void;
 }
 
+const WELCOME_MESSAGE: AIMessage = {
+  id: 'welcome',
+  sender: 'ai',
+  text: "Hi! I'm Compass AI. Ask me about your schedule, budget, placement prep, or anything else in your dashboard.",
+  timestamp: 'Just now'
+};
+
 export const CompassAIDrawer: React.FC<CompassAIDrawerProps> = ({
   isOpen,
   onClose,
   onAddToPlanner,
   onOpenStudyGuide
 }) => {
-  const [messages, setMessages] = useState<AIMessage[]>(INITIAL_AI_MESSAGES);
+  const { user } = useAuth();
+  const [messages, setMessages] = useState<AIMessage[]>([WELCOME_MESSAGE]);
   const [inputText, setInputText] = useState('');
   const [activeFilter, setActiveFilter] = useState('All Modules');
   const [isThinking, setIsThinking] = useState(false);
   const [actionSuccessToast, setActionSuccessToast] = useState<string | null>(null);
-  const thinkingTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const [snapshot, setSnapshot] = useState<string>('Loading your live snapshot...');
   const toastTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-
-  if (!isOpen) return null;
 
   useEffect(() => {
     return () => {
-      if (thinkingTimeoutRef.current) clearTimeout(thinkingTimeoutRef.current);
       if (toastTimeoutRef.current) clearTimeout(toastTimeoutRef.current);
     };
   }, []);
+
+  // Pull real dashboard context whenever the drawer is opened so the
+  // AI has up-to-date numbers instead of hardcoded placeholders.
+  useEffect(() => {
+    if (!isOpen) return;
+    getDashboard()
+      .then((d) => {
+        setSnapshot(
+          `Intelligence ${d.intelligence_score} • ₹${d.remaining_budget.toFixed(0)} Budget • ${d.placement_odds}% Placement Odds`
+        );
+      })
+      .catch(() => setSnapshot('Live snapshot unavailable right now.'));
+  }, [isOpen]);
+
+  if (!isOpen) return null;
 
   const quickPrompts = [
     'Quiet study cafes under ₹150 nearby',
@@ -39,7 +60,7 @@ export const CompassAIDrawer: React.FC<CompassAIDrawerProps> = ({
     'Review internship matches for Docker'
   ];
 
-  const handleSendMessage = (textToSend?: string) => {
+  const handleSendMessage = async (textToSend?: string) => {
     const text = textToSend || inputText.trim();
     if (!text) return;
 
@@ -54,35 +75,50 @@ export const CompassAIDrawer: React.FC<CompassAIDrawerProps> = ({
     setInputText('');
     setIsThinking(true);
 
-    if (thinkingTimeoutRef.current) clearTimeout(thinkingTimeoutRef.current);
-    thinkingTimeoutRef.current = setTimeout(() => {
-      let replyText = '';
+    try {
+      // Pull fresh profile + dashboard data so Gemini answers with the
+      // student's real GPA, budget, and target role instead of guessing.
+      const [dashboard, profile] = await Promise.allSettled([getDashboard(), getMyProfile()]);
 
-      if (text.toLowerCase().includes('cafe') || text.toLowerCase().includes('study')) {
-        replyText =
-          'Found 2 verified study spots fitting your ₹150 budget within 500m of North Campus: Green Leaf Cafe (quiet courtyard, filter coffee ₹40, student Wi-Fi) and Odegaard Reading Room (Free, power sockets at every desk).';
-      } else if (text.toLowerCase().includes('cgpa') || text.toLowerCase().includes('dbms')) {
-        replyText =
-          'Scoring 85+ on DBMS (4 credits) moves your cumulative GPA from 3.82 to 3.86, placing you solidly within the Dean\'s List Distinction tier for Sem 6!';
-      } else if (text.toLowerCase().includes('cloth') || text.toLowerCase().includes('800')) {
-        replyText =
-          'We surfaced the Formal Presentation Shirt (₹599) with 24% budget impact. Buying it leaves you with ₹1,901, well above your ₹1,500 emergency buffer.';
-      } else {
-        replyText =
-          `I reviewed your current schedule and budget pace for "${text}". Your academic rhythm is 92% consistent, with DBMS Normalization remaining your highest yield target.`;
+      const context: Record<string, unknown> = { active_module_filter: activeFilter };
+      if (dashboard.status === 'fulfilled') {
+        context.dashboard = {
+          intelligence_score: dashboard.value.intelligence_score,
+          remaining_budget: dashboard.value.remaining_budget,
+          daily_budget_limit: dashboard.value.daily_budget_limit,
+          academic_index: dashboard.value.academic_index,
+          placement_odds: dashboard.value.placement_odds,
+          tasks: dashboard.value.tasks,
+        };
       }
+      if (profile.status === 'fulfilled') {
+        context.profile = {
+          major: profile.value.major,
+          current_gpa: profile.value.current_gpa,
+          target_gpa: profile.value.target_gpa,
+          target_role: profile.value.target_role,
+        };
+      }
+
+      const { reply } = await askAi(text, context);
 
       const aiMsg: AIMessage = {
         id: `ai-${Date.now()}`,
         sender: 'ai',
-        text: replyText,
+        text: reply,
         timestamp: 'Just now',
         richContent: undefined
       };
-
       setMessages((prev) => [...prev, aiMsg]);
+    } catch (err) {
+      const message = err instanceof ApiError ? err.message : 'Something went wrong reaching Compass AI. Please try again.';
+      setMessages((prev) => [
+        ...prev,
+        { id: `err-${Date.now()}`, sender: 'ai', text: message, timestamp: 'Just now' }
+      ]);
+    } finally {
       setIsThinking(false);
-    }, 900);
+    }
   };
 
   const handleAddStudyBlock = () => {
@@ -112,7 +148,7 @@ export const CompassAIDrawer: React.FC<CompassAIDrawerProps> = ({
                   <span className="w-2 h-2 rounded-full bg-tertiary-fixed-dim animate-pulse"></span>
                 </div>
                 <p className="text-[11px] text-on-surface-variant font-medium">
-                  Alex • CS Sem 6 • UW Seattle
+                  {user?.full_name || 'Student'}
                 </p>
               </div>
             </div>
@@ -150,7 +186,7 @@ export const CompassAIDrawer: React.FC<CompassAIDrawerProps> = ({
           <div className="w-full mt-2 py-1.5 px-3 rounded-xl bg-primary-fixed/40 flex items-center justify-between text-[11px] text-on-primary-fixed">
             <span className="flex items-center gap-1 font-semibold">
               <span className="material-symbols-outlined text-[14px]">sensors</span>
-              Live Snapshot: Mid-Sem in 14d • ₹2,500 Budget • 92% Rhythm
+              Live Snapshot: {snapshot}
             </span>
           </div>
         </div>

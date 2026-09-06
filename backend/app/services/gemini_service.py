@@ -89,7 +89,7 @@ class GeminiService:
             try:
                 ctx_str = f"Student Target Role: {target_role}. Profile Context: {profile_data if profile_data else 'Standard'}"
                 response = self.client.models.generate_content(
-                    model="gemini-1.5-flash",
+                    model="gemini-3.5-flash",
                     contents=(
                         f"You are an elite AI Career Mentor for a university student. {ctx_str}\n"
                         f"Keep responses concise and use short bullet points where appropriate.\n"
@@ -118,7 +118,7 @@ class GeminiService:
                     "career development, interview prep, skill building, and budget optimization."
                 )
                 response = self.client.models.generate_content(
-                    model="gemini-1.5-flash",
+                    model="gemini-3.5-flash",
                     contents=f"{sys_inst}\n\nStudent Query: {prompt}\nContext: {context}",
                 )
                 if response and response.text:

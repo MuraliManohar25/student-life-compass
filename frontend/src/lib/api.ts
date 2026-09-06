@@ -205,4 +205,18 @@ export async function getDashboard(): Promise<DashboardResponse> {
   return request<DashboardResponse>('/dashboard');
 }
 
+// ---- AI Assistant endpoint ----
+
+export interface AskAiResponse {
+  reply: string;
+  source: string;
+}
+
+export async function askAi(prompt: string, context?: Record<string, unknown>): Promise<AskAiResponse> {
+  return request<AskAiResponse>('/ai/ask', {
+    method: 'POST',
+    body: { prompt, context: context || null },
+  });
+}
+
 export { request };
