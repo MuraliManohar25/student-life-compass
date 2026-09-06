@@ -48,13 +48,21 @@ export const NotificationsModal: React.FC<NotificationsModalProps> = ({
             <div
               key={item.id}
               onClick={() => {
-                markNotificationRead(item.id).catch(() => undefined);
+                // Optimistic update with rollback on failure.
+                setNotifications((prev) => prev.map((n) => (n.id === item.id ? { ...n, is_read: true } : n)));
+                markNotificationRead(item.id).catch(() =>
+                  setNotifications((prev) => prev.map((n) => (n.id === item.id ? { ...n, is_read: item.is_read } : n)))
+                );
                 if (item.category === 'Academic') {
                   onNavigateToAcademics();
                 }
                 onClose();
               }}
-              className="p-3.5 rounded-xl bg-gray-50 border border-gray-100 hover:bg-gray-100/70 transition-colors cursor-pointer space-y-1"
+              className={`p-3.5 rounded-xl border transition-colors cursor-pointer space-y-1 ${
+                item.is_read
+                  ? 'bg-gray-50/60 border-gray-100 opacity-70'
+                  : 'bg-gray-50 border-gray-100 hover:bg-gray-100/70'
+              }`}
             >
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-1.5">

@@ -1,6 +1,21 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useAuth } from '../context/AuthContext';
-import { getBudgetSummary, getMyProfile, ProfileOut, BudgetSummaryResponse, updateMyProfile } from '../lib/api';
+import { getBudgetSummary, getMyProfile, ProfileOut, BudgetSummaryResponse, updateMyProfile, saveItem, ApiError } from '../lib/api';
+
+const PREF_KEYS = {
+  radius: 'slc_pref_radius',
+  stepByStep: 'slc_pref_stepbystep',
+  reminder: 'slc_pref_reminder',
+};
+
+function loadPref<T>(key: string, fallback: T): T {
+  try {
+    const raw = localStorage.getItem(key);
+    return raw !== null ? (JSON.parse(raw) as T) : fallback;
+  } catch {
+    return fallback;
+  }
+}
 
 interface StudentProfileModalProps {
   isOpen: boolean;
@@ -13,10 +28,18 @@ export const StudentProfileModal: React.FC<StudentProfileModalProps> = ({
 }) => {
   const [targetGpa, setTargetGpa] = useState('0');
   const [dailyCap, setDailyCap] = useState('0');
-  const [discoveryRadius, setDiscoveryRadius] = useState(2.5);
-  const [stepByStepMode, setStepByStepMode] = useState(true);
-  const [dailyReminder, setDailyReminder] = useState(true);
+  const [initialDailyCap, setInitialDailyCap] = useState('0');
+  const [college, setCollege] = useState('');
+  const [major, setMajor] = useState('');
+  const [targetRole, setTargetRole] = useState('');
+  const [currentGpa, setCurrentGpa] = useState('0');
+  const [discoveryRadius, setDiscoveryRadius] = useState(() => loadPref(PREF_KEYS.radius, 2.5));
+  const [stepByStepMode, setStepByStepMode] = useState(() => loadPref(PREF_KEYS.stepByStep, true));
+  const [dailyReminder, setDailyReminder] = useState(() => loadPref(PREF_KEYS.reminder, true));
   const [savedToast, setSavedToast] = useState(false);
+  const [saveMessage, setSaveMessage] = useState('Preferences Saved!');
+  const [saveError, setSaveError] = useState<string | null>(null);
+  const [isSaving, setIsSaving] = useState(false);
   const [profile, setProfile] = useState<ProfileOut | null>(null);
   const [budget, setBudget] = useState<BudgetSummaryResponse | null>(null);
   const timeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -25,9 +48,28 @@ export const StudentProfileModal: React.FC<StudentProfileModalProps> = ({
   useEffect(() => {
     if (!isOpen) return;
     Promise.all([getMyProfile(), getBudgetSummary()]).then(([p, b]) => {
-      setProfile(p); setBudget(b); setTargetGpa(String(p.target_gpa || 0)); setDailyCap(String(b.daily_cap || 0));
+      setProfile(p); setBudget(b);
+      setTargetGpa(String(p.target_gpa || 0));
+      setDailyCap(String(b.daily_cap || 0));
+      setInitialDailyCap(String(b.daily_cap || 0));
+      setCollege(p.college || '');
+      setMajor(p.major || '');
+      setTargetRole(p.target_role || '');
+      setCurrentGpa(String(p.current_gpa || 0));
+      setSaveError(null);
     }).catch(() => undefined);
   }, [isOpen]);
+
+  // Device-level UI preferences persist across refreshes via localStorage.
+  useEffect(() => {
+    try {
+      localStorage.setItem(PREF_KEYS.radius, JSON.stringify(discoveryRadius));
+      localStorage.setItem(PREF_KEYS.stepByStep, JSON.stringify(stepByStepMode));
+      localStorage.setItem(PREF_KEYS.reminder, JSON.stringify(dailyReminder));
+    } catch {
+      // Storage unavailable — preferences simply won't persist on this device.
+    }
+  }, [discoveryRadius, stepByStepMode, dailyReminder]);
 
   if (!isOpen) return null;
 
@@ -36,15 +78,66 @@ export const StudentProfileModal: React.FC<StudentProfileModalProps> = ({
     onClose();
   };
 
-  const handleSave = async () => {
-    if (!profile || !budget) return;
-    await updateMyProfile({ college: profile.college, major: profile.major, current_gpa: profile.current_gpa, target_gpa: Number(targetGpa) || 0, target_role: profile.target_role, sleep_hours: profile.sleep_hours, monthly_budget: budget.monthly_budget, skills: [] });
+  const flashSaved = (message: string, closeAfter: boolean) => {
+    setSaveMessage(message);
     setSavedToast(true);
     if (timeoutRef.current) clearTimeout(timeoutRef.current);
     timeoutRef.current = setTimeout(() => {
       setSavedToast(false);
-      onClose();
+      if (closeAfter) onClose();
     }, 1200);
+  };
+
+  const handleSave = async () => {
+    if (!profile || !budget || isSaving) return;
+    setIsSaving(true);
+    setSaveError(null);
+    try {
+      // If the student edited their daily pace, scale it to a monthly budget;
+      // otherwise keep the stored monthly budget untouched.
+      const monthlyBudget =
+        dailyCap !== initialDailyCap && Number(dailyCap) > 0
+          ? Math.round(Number(dailyCap) * 30)
+          : budget.monthly_budget;
+      await updateMyProfile({
+        college: college.trim(),
+        major: major.trim(),
+        current_gpa: Number(currentGpa) || 0,
+        target_gpa: Number(targetGpa) || 0,
+        target_role: targetRole.trim(),
+        sleep_hours: profile.sleep_hours,
+        monthly_budget: monthlyBudget,
+        // Send the stored skills back so they are preserved, not wiped.
+        skills: profile.skills || [],
+      });
+      const [p, b] = await Promise.all([getMyProfile(), getBudgetSummary()]);
+      setProfile(p);
+      setBudget(b);
+      setInitialDailyCap(String(b.daily_cap || 0));
+      flashSaved('Preferences Saved!', true);
+    } catch (err) {
+      setSaveError(err instanceof ApiError ? err.message : 'Could not save your profile. Please try again.');
+    } finally {
+      setIsSaving(false);
+    }
+  };
+
+  const handleExportCheatsheet = async () => {
+    if (isSaving) return;
+    setIsSaving(true);
+    setSaveError(null);
+    try {
+      await saveItem({
+        kind: 'cheatsheet',
+        ref_id: 'semester-cs304-calculus',
+        title: 'Semester Cheatsheet (CS-304 + Calculus)',
+      });
+      flashSaved('Cheatsheet saved to your library!', false);
+    } catch {
+      setSaveError('Could not save the cheatsheet. Please try again.');
+    } finally {
+      setIsSaving(false);
+    }
   };
 
   useEffect(() => {
@@ -117,8 +210,50 @@ export const StudentProfileModal: React.FC<StudentProfileModalProps> = ({
           <h4 className="text-xs font-bold text-gray-500 uppercase tracking-widest">
             Academic & Career Focus
           </h4>
-
           <div className="space-y-2">
+            <div className="flex items-center justify-between gap-2 text-xs">
+              <span className="text-gray-600 shrink-0">College</span>
+              <input
+                type="text"
+                value={college}
+                onChange={(e) => setCollege(e.target.value)}
+                placeholder="Your college"
+                className="flex-1 min-w-0 h-8 px-2 rounded-lg bg-gray-50 border border-gray-200 font-semibold text-[#1a1a1a] text-xs focus:outline-none focus:border-indigo-600"
+              />
+            </div>
+
+            <div className="flex items-center justify-between gap-2 text-xs">
+              <span className="text-gray-600 shrink-0">Major</span>
+              <input
+                type="text"
+                value={major}
+                onChange={(e) => setMajor(e.target.value)}
+                placeholder="Your major"
+                className="flex-1 min-w-0 h-8 px-2 rounded-lg bg-gray-50 border border-gray-200 font-semibold text-[#1a1a1a] text-xs focus:outline-none focus:border-indigo-600"
+              />
+            </div>
+
+            <div className="flex items-center justify-between gap-2 text-xs">
+              <span className="text-gray-600 shrink-0">Career Goal</span>
+              <input
+                type="text"
+                value={targetRole}
+                onChange={(e) => setTargetRole(e.target.value)}
+                placeholder="e.g. Backend Developer"
+                className="flex-1 min-w-0 h-8 px-2 rounded-lg bg-gray-50 border border-gray-200 font-semibold text-[#1a1a1a] text-xs focus:outline-none focus:border-indigo-600"
+              />
+            </div>
+
+            <div className="flex items-center justify-between text-xs">
+              <span className="text-gray-600">Current GPA</span>
+              <input
+                type="text"
+                value={currentGpa}
+                onChange={(e) => setCurrentGpa(e.target.value)}
+                className="w-16 h-8 text-center rounded-lg bg-gray-50 border border-gray-200 font-semibold text-[#1a1a1a] text-xs focus:outline-none focus:border-indigo-600"
+              />
+            </div>
+
             <div className="flex items-center justify-between text-xs">
               <span className="text-gray-600">Target Semester GPA</span>
               <input
@@ -223,28 +358,35 @@ export const StudentProfileModal: React.FC<StudentProfileModalProps> = ({
 
         {/* Action Buttons */}
         <div className="pt-2 space-y-2">
+          {saveError && (
+            <p className="text-[11px] text-red-600 font-medium bg-red-50 border border-red-200 rounded-xl px-3 py-2">
+              {saveError}
+            </p>
+          )}
           <button
             onClick={handleSave}
-            className="w-full py-3 rounded-xl bg-indigo-600 text-white text-xs font-semibold shadow-xs hover:bg-indigo-700 transition-colors cursor-pointer flex items-center justify-center gap-1.5"
+            disabled={isSaving}
+            className="w-full py-3 rounded-xl bg-indigo-600 text-white text-xs font-semibold shadow-xs hover:bg-indigo-700 transition-colors cursor-pointer flex items-center justify-center gap-1.5 disabled:opacity-50"
             type="button"
           >
             {savedToast ? (
               <>
                 <span className="material-symbols-outlined text-[18px]">check</span>
-                <span>Preferences Saved!</span>
+                <span>{saveMessage}</span>
               </>
             ) : (
-              <span>Save & Apply Preferences</span>
+              <span>{isSaving ? 'Saving…' : 'Save & Apply Preferences'}</span>
             )}
           </button>
 
           <button
-            onClick={() => alert('Downloading Semester CS-304 + Calculus Cheatsheet PDF...')}
-            className="w-full py-2.5 rounded-xl bg-gray-100 text-gray-700 text-xs font-medium hover:bg-gray-200 transition-colors cursor-pointer flex items-center justify-center gap-1.5"
+            onClick={handleExportCheatsheet}
+            disabled={isSaving}
+            className="w-full py-2.5 rounded-xl bg-gray-100 text-gray-700 text-xs font-medium hover:bg-gray-200 transition-colors cursor-pointer flex items-center justify-center gap-1.5 disabled:opacity-50"
             type="button"
           >
             <span className="material-symbols-outlined text-[16px]">download</span>
-            <span>Export Semester Cheatsheet PDF</span>
+            <span>Save Semester Cheatsheet to Library</span>
           </button>
 
           <button

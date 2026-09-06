@@ -21,6 +21,7 @@ def get_my_profile(
 
     budget_pred = db.query(BudgetPrediction).filter(BudgetPrediction.user_id == current_user.id).first()
     user_monthly_budget = budget_pred.monthly_budget if budget_pred else 0.0
+    skills = db.query(Skill).filter(Skill.profile_id == profile.id).all()
 
     return {
         "id": profile.id,
@@ -35,6 +36,7 @@ def get_my_profile(
         "sleep_hours": profile.sleep_hours or 0.0,
         "monthly_budget": user_monthly_budget,
         "onboarding_completed": getattr(profile, "onboarding_completed", False),
+        "skills": [{"name": s.name, "proficiency_score": s.proficiency_score} for s in skills],
     }
 
 @router.post("/onboarding")
@@ -103,6 +105,7 @@ def update_my_profile(
     if not profile:
         profile = Profile(user_id=current_user.id)
         db.add(profile)
+        db.flush()
 
     profile.college = data.college
     profile.major = data.major
@@ -125,27 +128,29 @@ def update_my_profile(
         budget_pred.monthly_budget = data.monthly_budget
         budget_pred.daily_cap = round(data.monthly_budget / 30.0, 2)
 
-    # Replaces/creates Skill rows
-    db.query(Skill).filter(Skill.profile_id == profile.id).delete()
-    skill_scores = []
-    for s in data.skills:
-        skill_name = s.get("name", "").strip()
-        score = float(s.get("proficiency_score", 70.0))
-        if skill_name:
-            new_skill = Skill(
-                profile_id=profile.id,
-                name=skill_name,
-                proficiency_score=score,
-                market_benchmark=85.0,
-                category="Technical"
-            )
-            db.add(new_skill)
-            skill_scores.append(score)
+    # Replaces/creates Skill rows only when the caller sent a skills list;
+    # omitting it preserves the student's existing skills.
+    if data.skills is not None:
+        db.query(Skill).filter(Skill.profile_id == profile.id).delete()
+        skill_scores = []
+        for s in data.skills:
+            skill_name = s.get("name", "").strip()
+            score = float(s.get("proficiency_score", 70.0))
+            if skill_name:
+                new_skill = Skill(
+                    profile_id=profile.id,
+                    name=skill_name,
+                    proficiency_score=score,
+                    market_benchmark=85.0,
+                    category="Technical"
+                )
+                db.add(new_skill)
+                skill_scores.append(score)
 
-    if skill_scores:
-        profile.market_match_index = round(sum(skill_scores) / len(skill_scores), 1)
-    else:
-        profile.market_match_index = 75.0
+        if skill_scores:
+            profile.market_match_index = round(sum(skill_scores) / len(skill_scores), 1)
+        else:
+            profile.market_match_index = 75.0
 
     db.commit()
     db.refresh(profile)

@@ -1,52 +1,66 @@
 import React, { useState, useEffect, useCallback, useRef } from 'react';
-import { ShoppingItem } from '../types';
 import {
   getBudgetSummary,
   getExpenses,
   createExpense,
+  updateExpense,
   deleteExpense,
+  getShoppingCatalog,
+  getSavedItems,
+  saveItem,
+  deleteSavedItem,
   BudgetSummaryResponse,
   ExpenseOut,
+  ShoppingRecord,
+  SavedItemRecord,
   ApiError,
 } from '../lib/api';
 
-interface FinanceScreenProps {
-  shoppingItems: ShoppingItem[];
-  onToggleShoppingItem: (id: string) => void;
-}
-
-export const FinanceScreen: React.FC<FinanceScreenProps> = ({
-  shoppingItems,
-  onToggleShoppingItem
-}) => {
+export const FinanceScreen: React.FC = () => {
   const [isLoading, setIsLoading] = useState(true);
   const [loadError, setLoadError] = useState<string | null>(null);
   const [budgetSummary, setBudgetSummary] = useState<BudgetSummaryResponse | null>(null);
   const [expenses, setExpenses] = useState<ExpenseOut[]>([]);
+  const [actionError, setActionError] = useState<string | null>(null);
 
-  // Add Expense Modal
+  // Smart campus shopping catalog (shared) + per-user persisted state.
+  const [shoppingCatalog, setShoppingCatalog] = useState<ShoppingRecord[]>([]);
+  const [shoppingSaveIds, setShoppingSaveIds] = useState<Map<string, number>>(new Map());
+  const [reservations, setReservations] = useState<SavedItemRecord[]>([]);
+  const [shoppingBusy, setShoppingBusy] = useState(false);
+
+  // Add / Edit Expense Modal
   const [showAddModal, setShowAddModal] = useState(false);
+  const [editingId, setEditingId] = useState<number | null>(null);
   const [newTitle, setNewTitle] = useState('');
   const [newAmount, setNewAmount] = useState('');
   const [newCategory, setNewCategory] = useState('Food & Mess');
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [formError, setFormError] = useState<string | null>(null);
 
   // Reserve modal state
   const [selectedDay, setSelectedDay] = useState<string>('wed');
   const [showReserveModal, setShowReserveModal] = useState(false);
   const [reserveSuccess, setReserveSuccess] = useState(false);
+  const [isReserving, setIsReserving] = useState(false);
   const timeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const loadFinanceData = useCallback(async () => {
     setIsLoading(true);
     setLoadError(null);
     try {
-      const [summary, expenseList] = await Promise.all([
+      const [summary, expenseList, catalog, savedShopping, savedReservations] = await Promise.all([
         getBudgetSummary(),
         getExpenses(),
+        getShoppingCatalog(),
+        getSavedItems('shopping'),
+        getSavedItems('reservation'),
       ]);
       setBudgetSummary(summary);
       setExpenses(expenseList);
+      setShoppingCatalog(catalog);
+      setShoppingSaveIds(new Map(savedShopping.map((s) => [s.ref_id, s.id])));
+      setReservations(savedReservations);
     } catch (err) {
       setLoadError(err instanceof ApiError ? err.message : 'Could not load your finance data.');
     } finally {
@@ -58,44 +72,137 @@ export const FinanceScreen: React.FC<FinanceScreenProps> = ({
     loadFinanceData();
   }, [loadFinanceData]);
 
-  const handleAddExpense = async (e: React.FormEvent) => {
+  const openAddModal = () => {
+    setEditingId(null);
+    setNewTitle('');
+    setNewAmount('');
+    setNewCategory('Food & Mess');
+    setFormError(null);
+    setShowAddModal(true);
+  };
+
+  const openEditModal = (exp: ExpenseOut) => {
+    setEditingId(exp.id);
+    setNewTitle(exp.title);
+    setNewAmount(String(exp.amount));
+    setNewCategory(exp.category);
+    setFormError(null);
+    setShowAddModal(true);
+  };
+
+  const handleSubmitExpense = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!newTitle.trim() || !newAmount || parseFloat(newAmount) <= 0) return;
     setIsSubmitting(true);
+    setFormError(null);
     try {
-      await createExpense({
-        title: newTitle.trim(),
-        amount: parseFloat(newAmount),
-        category: newCategory,
-        date: new Date().toISOString(),
-      });
+      if (editingId !== null) {
+        await updateExpense(editingId, {
+          title: newTitle.trim(),
+          amount: parseFloat(newAmount),
+          category: newCategory,
+          date: new Date().toISOString(),
+        });
+      } else {
+        await createExpense({
+          title: newTitle.trim(),
+          amount: parseFloat(newAmount),
+          category: newCategory,
+          date: new Date().toISOString(),
+        });
+      }
       setNewTitle('');
       setNewAmount('');
       setShowAddModal(false);
+      setEditingId(null);
       await loadFinanceData();
     } catch (err) {
-      alert(err instanceof ApiError ? err.message : 'Failed to add expense.');
+      setFormError(err instanceof ApiError ? err.message : 'Failed to save expense.');
     } finally {
       setIsSubmitting(false);
     }
   };
 
   const handleDeleteExpense = async (id: number) => {
+    setActionError(null);
     try {
       await deleteExpense(id);
       await loadFinanceData();
     } catch {
-      alert('Could not delete expense.');
+      setActionError('Could not delete expense. Please try again.');
     }
   };
 
-  const handleConfirmReservation = () => {
-    setReserveSuccess(true);
-    if (timeoutRef.current) clearTimeout(timeoutRef.current);
-    timeoutRef.current = setTimeout(() => {
-      setReserveSuccess(false);
+  const handleToggleShopping = async (item: ShoppingRecord) => {
+    if (shoppingBusy) return;
+    setShoppingBusy(true);
+    setActionError(null);
+    const refId = String(item.id);
+    try {
+      if (item.selected) {
+        const saveId = shoppingSaveIds.get(refId);
+        if (saveId !== undefined) await deleteSavedItem(saveId);
+        setShoppingSaveIds((prev) => {
+          const next = new Map(prev);
+          next.delete(refId);
+          return next;
+        });
+        setShoppingCatalog((prev) => prev.map((c) => (c.id === item.id ? { ...c, selected: false } : c)));
+      } else {
+        const saved = await saveItem({
+          kind: 'shopping',
+          ref_id: refId,
+          title: item.name,
+          item_meta: { price: item.price, category: item.category },
+        });
+        setShoppingSaveIds((prev) => new Map(prev).set(refId, saved.id));
+        setShoppingCatalog((prev) => prev.map((c) => (c.id === item.id ? { ...c, selected: true } : c)));
+      }
+    } catch {
+      setActionError('Could not update your selection. Please try again.');
+    } finally {
+      setShoppingBusy(false);
+    }
+  };
+
+  // Persists a 48-hour campus hold per selected item so the reservation
+  // survives refresh and is tied to the authenticated student.
+  const handleConfirmReservation = async () => {
+    const selected = shoppingCatalog.filter((i) => i.selected);
+    const alreadyHeld = new Set(reservations.map((r) => r.ref_id));
+    const toHold = selected.filter((i) => !alreadyHeld.has(`shopping-${i.id}`));
+    if (toHold.length === 0) {
+      setReserveSuccess(true);
+      if (timeoutRef.current) clearTimeout(timeoutRef.current);
+      timeoutRef.current = setTimeout(() => {
+        setReserveSuccess(false);
+        setShowReserveModal(false);
+      }, 1800);
+      return;
+    }
+    setIsReserving(true);
+    try {
+      for (const item of toHold) {
+        await saveItem({
+          kind: 'reservation',
+          ref_id: `shopping-${item.id}`,
+          title: `48h hold: ${item.name}`,
+          item_meta: { price: item.price, shopping_ref: String(item.id) },
+        });
+      }
+      setReservations(await getSavedItems('reservation'));
+      setReserveSuccess(true);
+      if (timeoutRef.current) clearTimeout(timeoutRef.current);
+      timeoutRef.current = setTimeout(() => {
+        setReserveSuccess(false);
+        setShowReserveModal(false);
+      }, 1800);
+    } catch {
+      setActionError('Could not place the hold. Please try again.');
       setShowReserveModal(false);
-    }, 1800);
+    } finally {
+      setIsReserving(false);
+    }
   };
 
   useEffect(() => {
@@ -137,9 +244,11 @@ export const FinanceScreen: React.FC<FinanceScreenProps> = ({
   const spentPercent = monthlyBudget > 0 ? Math.min(100, Math.round((totalSpent / monthlyBudget) * 100)) : 0;
   const isHealthy = remainingBalance > budgetSummary.daily_cap * 3;
 
-  const selectedItemsTotal = shoppingItems
+  const selectedItemsTotal = shoppingCatalog
     .filter((item) => item.selected)
     .reduce((sum, item) => sum + item.price, 0);
+
+  const heldRefIds = new Set(reservations.map((r) => r.ref_id));
 
   const projectedBalance = remainingBalance - selectedItemsTotal;
 
@@ -170,7 +279,7 @@ export const FinanceScreen: React.FC<FinanceScreenProps> = ({
           <p className="text-xs text-gray-500">Live tracking of your monthly allowance & spending pulse</p>
         </div>
         <button
-          onClick={() => setShowAddModal(true)}
+          onClick={openAddModal}
           type="button"
           className="px-4 py-2.5 rounded-xl bg-indigo-600 text-white text-xs font-semibold hover:bg-indigo-700 transition-all flex items-center gap-1.5 shadow-xs cursor-pointer"
         >
@@ -178,6 +287,14 @@ export const FinanceScreen: React.FC<FinanceScreenProps> = ({
           <span>Add Expense</span>
         </button>
       </div>
+
+      {actionError && (
+        <div className="p-3 rounded-xl bg-red-50 border border-red-200 text-[12px] text-red-700 font-medium flex items-center gap-2">
+          <span className="material-symbols-outlined text-[18px]">error</span>
+          <span className="flex-1">{actionError}</span>
+          <button onClick={() => setActionError(null)} className="font-bold cursor-pointer" type="button">Dismiss</button>
+        </div>
+      )}
 
       {/* 2-Column Responsive Dashboard Layout on Desktop */}
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
@@ -274,6 +391,14 @@ export const FinanceScreen: React.FC<FinanceScreenProps> = ({
                     </div>
                     <div className="flex items-center gap-2 shrink-0">
                       <span className="text-xs font-bold text-[#1a1a1a]">₹{exp.amount.toFixed(0)}</span>
+                      <button
+                        onClick={() => openEditModal(exp)}
+                        className="text-gray-300 hover:text-indigo-600 cursor-pointer p-0.5"
+                        type="button"
+                        title="Edit expense"
+                      >
+                        <span className="material-symbols-outlined text-[16px]">edit</span>
+                      </button>
                       <button
                         onClick={() => handleDeleteExpense(exp.id)}
                         className="text-gray-300 hover:text-red-500 cursor-pointer p-0.5"
@@ -390,9 +515,11 @@ export const FinanceScreen: React.FC<FinanceScreenProps> = ({
               </span>
             </div>
 
-            {/* Shopping Items List */}
+            {/* Shopping Items List (catalog from API, selections persisted per user) */}
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-              {shoppingItems.map((item) => (
+              {shoppingCatalog.map((item) => {
+                const onHold = heldRefIds.has(`shopping-${item.id}`);
+                return (
                 <div
                   key={item.id}
                   className={`p-3.5 rounded-2xl bg-white shadow-xs flex flex-col justify-between space-y-3 transition-all border ${
@@ -405,7 +532,7 @@ export const FinanceScreen: React.FC<FinanceScreenProps> = ({
                     <div className="w-16 h-16 rounded-xl overflow-hidden bg-gray-100 shrink-0 shadow-xs">
                       <img
                         className="w-full h-full object-cover"
-                        src={item.imageUrl}
+                        src={item.image_url}
                         alt={item.name}
                         loading="lazy"
                       />
@@ -417,16 +544,22 @@ export const FinanceScreen: React.FC<FinanceScreenProps> = ({
                         <span className="text-[13px] font-bold text-indigo-600 shrink-0">₹{item.price}</span>
                       </div>
                       <p className="text-[11px] text-gray-500 line-clamp-2 mt-0.5">{item.description}</p>
+                      {onHold && (
+                        <span className="inline-block mt-1 px-2 py-0.5 rounded bg-emerald-50 text-emerald-700 text-[10px] font-bold uppercase tracking-wider border border-emerald-200/50">
+                          On hold 48h
+                        </span>
+                      )}
                     </div>
                   </div>
 
                   <div className="flex items-center justify-between pt-1 border-t border-gray-100">
                     <span className="text-[10px] text-gray-400 uppercase tracking-wider font-semibold">
-                      {item.budgetImpact}
+                      {item.budget_impact}
                     </span>
                     <button
-                      onClick={() => onToggleShoppingItem(item.id)}
-                      className={`px-3 py-1 rounded-lg text-[11px] font-bold transition-all cursor-pointer ${
+                      onClick={() => handleToggleShopping(item)}
+                      disabled={shoppingBusy}
+                      className={`px-3 py-1 rounded-lg text-[11px] font-bold transition-all cursor-pointer disabled:opacity-50 ${
                         item.selected
                           ? 'bg-indigo-600 text-white shadow-xs'
                           : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
@@ -437,7 +570,8 @@ export const FinanceScreen: React.FC<FinanceScreenProps> = ({
                     </button>
                   </div>
                 </div>
-              ))}
+                );
+              })}
             </div>
 
             {/* Simulated Balance Post-Purchase Sticky Simulation Card */}
@@ -469,7 +603,7 @@ export const FinanceScreen: React.FC<FinanceScreenProps> = ({
               <div className="flex items-center justify-between text-[11px] text-gray-500">
                 <span>
                   {selectedItemsTotal > 0
-                    ? `${shoppingItems.filter((i) => i.selected).length} items selected (₹${selectedItemsTotal})`
+                    ? `${shoppingCatalog.filter((i) => i.selected).length} items selected (₹${selectedItemsTotal})`
                     : 'No items selected'}
                 </span>
                 <span className="font-semibold text-indigo-600">
@@ -495,15 +629,17 @@ export const FinanceScreen: React.FC<FinanceScreenProps> = ({
         </div>
       </div>
 
-      {/* ADD EXPENSE MODAL */}
+      {/* ADD / EDIT EXPENSE MODAL */}
       {showAddModal && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-xs p-4">
           <form
-            onSubmit={handleAddExpense}
+            onSubmit={handleSubmitExpense}
             className="bg-white rounded-2xl p-6 max-w-sm w-full shadow-2xl space-y-4 border border-gray-200 animate-in zoom-in-95 duration-150"
           >
             <div className="flex items-center justify-between">
-              <h3 className="text-base font-bold text-[#1a1a1a]">Record New Expense</h3>
+              <h3 className="text-base font-bold text-[#1a1a1a]">
+                {editingId !== null ? 'Edit Expense' : 'Record New Expense'}
+              </h3>
               <button
                 onClick={() => setShowAddModal(false)}
                 type="button"
@@ -557,6 +693,12 @@ export const FinanceScreen: React.FC<FinanceScreenProps> = ({
               </div>
             </div>
 
+            {formError && (
+              <p className="text-[12px] text-red-600 font-medium bg-red-50 border border-red-200 rounded-xl px-3 py-2">
+                {formError}
+              </p>
+            )}
+
             <div className="flex gap-2 pt-2">
               <button
                 type="button"
@@ -570,7 +712,7 @@ export const FinanceScreen: React.FC<FinanceScreenProps> = ({
                 disabled={isSubmitting}
                 className="flex-1 py-2.5 rounded-xl bg-indigo-600 text-white text-xs font-semibold hover:bg-indigo-700 cursor-pointer disabled:opacity-50"
               >
-                {isSubmitting ? 'Saving…' : 'Save Expense'}
+                {isSubmitting ? 'Saving…' : editingId !== null ? 'Save Changes' : 'Save Expense'}
               </button>
             </div>
           </form>
@@ -627,7 +769,8 @@ export const FinanceScreen: React.FC<FinanceScreenProps> = ({
               </button>
               <button
                 onClick={handleConfirmReservation}
-                className="flex-1 py-2.5 rounded-xl bg-indigo-600 text-white text-[12px] font-semibold cursor-pointer flex items-center justify-center gap-1 hover:bg-indigo-700"
+                disabled={isReserving}
+                className="flex-1 py-2.5 rounded-xl bg-indigo-600 text-white text-[12px] font-semibold cursor-pointer flex items-center justify-center gap-1 hover:bg-indigo-700 disabled:opacity-50"
                 type="button"
               >
                 {reserveSuccess ? (
@@ -635,6 +778,8 @@ export const FinanceScreen: React.FC<FinanceScreenProps> = ({
                     <span className="material-symbols-outlined text-[16px]">check</span>
                     <span>Reserved!</span>
                   </>
+                ) : isReserving ? (
+                  <span>Placing hold…</span>
                 ) : (
                   <span>Confirm Hold</span>
                 )}

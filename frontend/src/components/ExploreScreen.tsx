@@ -3,9 +3,19 @@ import { StudentSpot } from '../types';
 
 interface ExploreScreenProps {
   spots: StudentSpot[];
+  savedIds?: Set<string>;
+  saveBusyId?: string | null;
+  isLoading?: boolean;
+  onToggleSave?: (spot: StudentSpot) => Promise<void>;
 }
 
-export const ExploreScreen: React.FC<ExploreScreenProps> = ({ spots }) => {
+export const ExploreScreen: React.FC<ExploreScreenProps> = ({
+  spots,
+  savedIds,
+  saveBusyId,
+  isLoading,
+  onToggleSave,
+}) => {
   const [selectedCategory, setSelectedCategory] = useState<string>('all');
   const [searchQuery, setSearchQuery] = useState('');
   const [viewMode, setViewMode] = useState<'list' | 'radar'>('list');
@@ -33,24 +43,53 @@ export const ExploreScreen: React.FC<ExploreScreenProps> = ({ spots }) => {
     return matchesCategory && matchesSearch;
   });
 
-  const handleSpotAction = (spot: StudentSpot) => {
-    let msg = '';
-    if (spot.actionType === 'navigate') {
-      msg = `Opening step-by-step walking directions to ${spot.name} (${spot.distance})...`;
-    } else if (spot.actionType === 'book_bms') {
-      msg = `Redirecting to BookMyShow with student discount pass (₹180 ID applied) for ${spot.name}!`;
-    } else if (spot.actionType === 'call') {
-      msg = `Calling campus desk at ${spot.name}: +1 (206) 543-1000...`;
-    } else if (spot.actionType === 'rapido') {
-      msg = `Opening student campus bike hail at ${spot.name} (Fare estimated: ₹28)...`;
-    } else if (spot.actionType === 'refill') {
-      msg = `LPG cylinder hostel booking submitted for delivery in 24h!`;
-    } else {
-      msg = `Opened ${spot.name}`;
-    }
+  const showFeedback = (msg: string) => {
     setActionFeedback(msg);
     if (timeoutRef.current) clearTimeout(timeoutRef.current);
     timeoutRef.current = setTimeout(() => setActionFeedback(null), 3500);
+  };
+
+  // Device-level actions perform the real handoff (Maps / dialer).
+  // Partner handoffs without an integration show an honest status message,
+  // while bookmarking always persists to the student's saved items.
+  const handleSpotAction = (spot: StudentSpot) => {
+    if (spot.actionType === 'navigate') {
+      window.open(
+        `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(spot.name)}`,
+        '_blank',
+        'noopener,noreferrer'
+      );
+      return;
+    }
+    if (spot.actionType === 'call') {
+      window.location.href = 'tel:+12065431000';
+      return;
+    }
+    let msg = '';
+    if (spot.actionType === 'book_bms') {
+      msg = `BookMyShow student pass for ${spot.name} is not connected yet — tap bookmark to keep it in your list.`;
+    } else if (spot.actionType === 'rapido') {
+      msg = `Campus bike hail at ${spot.name} is not connected yet — tap bookmark to keep it in your list.`;
+    } else if (spot.actionType === 'refill') {
+      msg = `LPG hostel booking for ${spot.name} is not connected yet — tap bookmark to keep it in your list.`;
+    } else {
+      msg = `Opened ${spot.name}`;
+    }
+    showFeedback(msg);
+  };
+
+  const handleToggleSave = async (spot: StudentSpot) => {
+    if (!onToggleSave) return;
+    try {
+      await onToggleSave(spot);
+      showFeedback(
+        savedIds?.has(spot.id)
+          ? `Removed ${spot.name} from your saved spots.`
+          : `Saved ${spot.name} — it will still be here after refresh.`
+      );
+    } catch (err) {
+      showFeedback(err instanceof Error ? err.message : 'Could not save this spot.');
+    }
   };
 
   useEffect(() => {
@@ -248,10 +287,16 @@ export const ExploreScreen: React.FC<ExploreScreenProps> = ({ spots }) => {
 
           {filteredSpots.length === 0 ? (
             <div className="p-8 text-center bg-white rounded-2xl border border-gray-200 space-y-2">
-              <span className="material-symbols-outlined text-[32px] text-gray-400">location_off</span>
-              <p className="text-xs font-semibold text-[#1a1a1a]">No matching spots found</p>
+              <span className="material-symbols-outlined text-[32px] text-gray-400">
+                {isLoading ? 'progress_activity' : 'location_off'}
+              </span>
+              <p className="text-xs font-semibold text-[#1a1a1a]">
+                {isLoading ? 'Loading verified spots…' : 'No matching spots found'}
+              </p>
               <p className="text-xs text-gray-500">
-                Try clearing filters or search for another landmark.
+                {isLoading
+                  ? 'Fetching the campus catalog.'
+                  : 'Try clearing filters or search for another landmark.'}
               </p>
               <button
                 onClick={() => {
@@ -322,13 +367,31 @@ export const ExploreScreen: React.FC<ExploreScreenProps> = ({ spots }) => {
                     <span className="text-[11px] text-gray-500 font-medium">
                       {spot.crowdInfo || 'Quiet environment'}
                     </span>
-                    <button
-                      onClick={() => handleSpotAction(spot)}
-                      className="px-3 py-1 rounded-lg bg-indigo-50 hover:bg-indigo-100 text-indigo-700 text-xs font-semibold cursor-pointer transition-colors"
-                      type="button"
-                    >
-                      {spot.actionLabel || 'Directions'}
-                    </button>
+                    <div className="flex items-center gap-1.5">
+                      <button
+                        onClick={() => handleToggleSave(spot)}
+                        disabled={saveBusyId === spot.id}
+                        aria-label={savedIds?.has(spot.id) ? 'Remove bookmark' : 'Bookmark spot'}
+                        title={savedIds?.has(spot.id) ? 'Remove bookmark' : 'Bookmark spot'}
+                        className={`w-7 h-7 rounded-lg flex items-center justify-center transition-colors cursor-pointer disabled:opacity-50 ${
+                          savedIds?.has(spot.id)
+                            ? 'bg-indigo-600 text-white'
+                            : 'bg-gray-100 text-gray-500 hover:bg-indigo-50 hover:text-indigo-700'
+                        }`}
+                        type="button"
+                      >
+                        <span className="material-symbols-outlined text-[16px]">
+                          {savedIds?.has(spot.id) ? 'bookmark' : 'bookmark_border'}
+                        </span>
+                      </button>
+                      <button
+                        onClick={() => handleSpotAction(spot)}
+                        className="px-3 py-1 rounded-lg bg-indigo-50 hover:bg-indigo-100 text-indigo-700 text-xs font-semibold cursor-pointer transition-colors"
+                        type="button"
+                      >
+                        {spot.actionLabel || 'Directions'}
+                      </button>
+                    </div>
                   </div>
                 </div>
               ))}
@@ -399,6 +462,21 @@ export const ExploreScreen: React.FC<ExploreScreenProps> = ({ spots }) => {
             </div>
 
             <div className="flex gap-2 pt-1">
+              <button
+                onClick={() => activeSpotModal && handleToggleSave(activeSpotModal)}
+                disabled={!!activeSpotModal && saveBusyId === activeSpotModal.id}
+                className={`py-2.5 px-3.5 rounded-xl text-[12px] font-semibold cursor-pointer flex items-center gap-1 disabled:opacity-50 ${
+                  activeSpotModal && savedIds?.has(activeSpotModal.id)
+                    ? 'bg-indigo-600 text-white'
+                    : 'bg-surface-container text-on-surface'
+                }`}
+                type="button"
+              >
+                <span className="material-symbols-outlined text-[16px]">
+                  {activeSpotModal && savedIds?.has(activeSpotModal.id) ? 'bookmark' : 'bookmark_border'}
+                </span>
+                <span>{activeSpotModal && savedIds?.has(activeSpotModal.id) ? 'Saved' : 'Save'}</span>
+              </button>
               <button
                 onClick={() => setActiveSpotModal(null)}
                 className="flex-1 py-2.5 rounded-xl bg-surface-container text-on-surface text-[12px] font-semibold cursor-pointer"

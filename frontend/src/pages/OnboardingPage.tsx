@@ -42,11 +42,16 @@ export const OnboardingPage: React.FC = () => {
     setSuccess('');
 
     try {
-      const response = await fetch('/api/auth/onboarding', {
+      // NOTE: this page is currently unused (App renders Login/Signup directly).
+      // When wired behind a Router, authenticate with the stored JWT — never
+      // the user id — and honor the configured API base URL.
+      const baseUrl = (import.meta as any).env?.VITE_API_BASE_URL || '/api';
+      const token = localStorage.getItem('token') || localStorage.getItem('slc_token') || '';
+      const response = await fetch(`${baseUrl}/auth/onboarding`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          'Authorization': `Bearer ${user?.id || ''}`, // Use proper auth header
+          'Authorization': `Bearer ${token}`,
         },
         body: JSON.stringify(form),
       });

@@ -3,8 +3,8 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-import { useState } from 'react';
-import { NavTab, AcademicSubTab, TaskItem, ScheduleBlock, ShoppingItem, StudentSpot } from './types';
+import { useState, useEffect, useCallback } from 'react';
+import { NavTab, AcademicSubTab, StudentSpot } from './types';
 import { Header } from './components/Header';
 import { Sidebar } from './components/Sidebar';
 import { BottomNav } from './components/BottomNav';
@@ -21,14 +21,52 @@ import { NotificationsModal } from './components/NotificationsModal';
 import { AuthProvider, useAuth } from './context/AuthContext';
 import { LoginScreen } from './components/LoginScreen';
 import { SignupScreen } from './components/SignupScreen';
+import {
+  getSpots,
+  getSavedItems,
+  saveItem,
+  deleteSavedItem,
+  createStudySession,
+  SpotRecord,
+} from './lib/api';
+
+function spotRecordToSpot(record: SpotRecord): StudentSpot {
+  return {
+    id: `spot-${record.id}`,
+    name: record.name,
+    category: record.category as StudentSpot['category'],
+    categoryLabel: record.category_label,
+    rating: record.rating,
+    distance: record.distance,
+    tags: record.tags || [],
+    crowdInfo: record.crowd_info,
+    extraBadge: record.extra_badge,
+    actionType: (['navigate', 'book_bms', 'call', 'rapido', 'refill'] as const).includes(
+      record.action_type as 'navigate'
+    )
+      ? (record.action_type as StudentSpot['actionType'])
+      : 'navigate',
+    actionLabel: record.action_label,
+    imageUrl: record.image_url,
+    alert: record.alert || undefined,
+  };
+}
 
 function AppShell() {
+  const { isAuthenticated } = useAuth();
   const [currentTab, setCurrentTab] = useState<NavTab>('home');
   const [academicSubTab, setAcademicSubTab] = useState<AcademicSubTab>('sequencer');
-  const [tasks] = useState<TaskItem[]>([]);
-  const [schedule, setSchedule] = useState<ScheduleBlock[]>([]);
-  const [shoppingItems, setShoppingItems] = useState<ShoppingItem[]>([]);
-  const [spots] = useState<StudentSpot[]>([]);
+
+  // Spots come from the backend catalog (/explore/spots) with per-user saves.
+  const [spots, setSpots] = useState<StudentSpot[]>([]);
+  const [spotsLoading, setSpotsLoading] = useState(true);
+  const [savedSpotIds, setSavedSpotIds] = useState<Set<string>>(new Set());
+  const [spotSaveIds, setSpotSaveIds] = useState<Map<string, number>>(new Map());
+  const [saveBusyId, setSaveBusyId] = useState<string | null>(null);
+
+  // Bumped whenever a study session is created outside AcademicsScreen
+  // (e.g. Compass AI) so the planner refetches real data.
+  const [plannerRefreshKey, setPlannerRefreshKey] = useState(0);
 
   // Modals & Overlay Drawers
   const [isCompassAIOpen, setIsCompassAIOpen] = useState(false);
@@ -36,18 +74,56 @@ function AppShell() {
   const [isSearchOpen, setIsSearchOpen] = useState(false);
   const [isNotificationsOpen, setIsNotificationsOpen] = useState(false);
 
-  // Handlers
-  const handleAddScheduleItem = (newBlock: ScheduleBlock) => {
-    setSchedule((prev) => [...prev, newBlock]);
-  };
+  useEffect(() => {
+    if (!isAuthenticated) return;
+    setSpotsLoading(true);
+    getSpots()
+      .then((records) => setSpots(records.map(spotRecordToSpot)))
+      .catch(() => setSpots([]))
+      .finally(() => setSpotsLoading(false));
+    getSavedItems('spot')
+      .then((items) => {
+        setSavedSpotIds(new Set(items.map((i) => `spot-${i.ref_id}`)));
+        setSpotSaveIds(new Map(items.map((i) => [`spot-${i.ref_id}`, i.id])));
+      })
+      .catch(() => undefined);
+  }, [isAuthenticated]);
 
-  const handleToggleShoppingItem = (id: string) => {
-    setShoppingItems((prev) =>
-      prev.map((item) =>
-        item.id === id ? { ...item, selected: !item.selected } : item
-      )
-    );
-  };
+  const handleToggleSpotSave = useCallback(
+    async (spot: StudentSpot) => {
+      if (saveBusyId) return;
+      setSaveBusyId(spot.id);
+      try {
+        if (savedSpotIds.has(spot.id)) {
+          const saveId = spotSaveIds.get(spot.id);
+          if (saveId !== undefined) {
+            await deleteSavedItem(saveId);
+          }
+          setSavedSpotIds((prev) => {
+            const next = new Set(prev);
+            next.delete(spot.id);
+            return next;
+          });
+          setSpotSaveIds((prev) => {
+            const next = new Map(prev);
+            next.delete(spot.id);
+            return next;
+          });
+        } else {
+          const refId = spot.id.replace(/^spot-/, '');
+          const saved = await saveItem({ kind: 'spot', ref_id: refId, title: spot.name });
+          setSavedSpotIds((prev) => new Set(prev).add(spot.id));
+          setSpotSaveIds((prev) => new Map(prev).set(spot.id, saved.id));
+        }
+      } catch {
+        // Error surfaces via the ExploreScreen toast; state stays unchanged.
+        throw new Error('Could not save this spot. Please try again.');
+      } finally {
+        setSaveBusyId(null);
+      }
+    },
+    [saveBusyId, savedSpotIds, spotSaveIds]
+  );
 
   const handleOpenStudyGuide = () => {
     setCurrentTab('academics');
@@ -55,16 +131,23 @@ function AppShell() {
     setIsCompassAIOpen(false);
   };
 
-  const handleAddAITaskToPlanner = (title: string) => {
-    const newBlock: ScheduleBlock = {
-      id: `ai-sched-${Date.now()}`,
-      timeRange: 'Saturday 10:00 AM - 01:00 PM',
-      title,
-      location: 'Odegaard Library (Quiet Zone)',
-      status: 'AI Sequenced',
-      weightBadge: 'AI sequenced from your saved tasks'
-    };
-    setSchedule((prev) => [...prev, newBlock]);
+  // Persists the AI-suggested block to /study-plan. Returns true on success
+  // so the drawer shows an honest confirmation instead of a fake one.
+  const handleAddAITaskToPlanner = async (title: string): Promise<boolean> => {
+    try {
+      await createStudySession({
+        title,
+        scheduled_time: 'Saturday 10:00 AM - 01:00 PM',
+        room: 'Odegaard Library (Quiet Zone)',
+        tag: 'AI Sequenced',
+        status: 'Upcoming',
+        duration_minutes: 180,
+      });
+      setPlannerRefreshKey((k) => k + 1);
+      return true;
+    } catch {
+      return false;
+    }
   };
 
   return (
@@ -99,22 +182,21 @@ function AppShell() {
 
           {currentTab === 'academics' && (
             <AcademicsScreen
-              tasks={tasks}
-              schedule={schedule}
-              onAddScheduleItem={handleAddScheduleItem}
               initialSubTab={academicSubTab}
+              plannerRefreshKey={plannerRefreshKey}
             />
           )}
 
-          {currentTab === 'finance' && (
-            <FinanceScreen
-              shoppingItems={shoppingItems}
-              onToggleShoppingItem={handleToggleShoppingItem}
-            />
-          )}
+          {currentTab === 'finance' && <FinanceScreen />}
 
           {currentTab === 'explore' && (
-            <ExploreScreen spots={spots} />
+            <ExploreScreen
+              spots={spots}
+              savedIds={savedSpotIds}
+              saveBusyId={saveBusyId}
+              isLoading={spotsLoading}
+              onToggleSave={handleToggleSpotSave}
+            />
           )}
 
           {currentTab === 'insights' && (

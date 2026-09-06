@@ -1,19 +1,46 @@
-import React, { useState, useEffect } from 'react';
-import { AcademicSubTab, ScheduleBlock, TaskItem } from '../types';
-import { createTask, getSequencedTasks, TaskRecord, updateTask } from '../lib/api';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
+import { AcademicSubTab, ScheduleBlock } from '../types';
+import {
+  createTask,
+  getSequencedTasks,
+  TaskRecord,
+  updateTask,
+  getStudySessions,
+  createStudySession,
+  deleteStudySession,
+  StudySessionOut,
+  saveItem,
+  addPlacementApplication,
+  logSprint,
+  ApiError,
+} from '../lib/api';
 
 interface AcademicsScreenProps {
-  tasks: TaskItem[];
-  schedule: ScheduleBlock[];
-  onAddScheduleItem: (item: ScheduleBlock) => void;
   initialSubTab?: AcademicSubTab;
+  plannerRefreshKey?: number;
+}
+
+function sessionToBlock(s: StudySessionOut): ScheduleBlock {
+  const title = s.title || '';
+  const urgent = /exam|mid-term|midterm|urgent|deadline/i.test(title);
+  let status: ScheduleBlock['status'] = 'Scheduled';
+  if (s.status === 'Done' || s.status === 'Completed') status = 'Completed';
+  else if (s.status === 'AI Sequenced' || s.tag === 'AI Sequenced') status = 'AI Sequenced';
+  else if (urgent || s.status === 'Urgent') status = 'Urgent';
+  return {
+    id: `session-${s.id}`,
+    timeRange: s.scheduled_time || '',
+    title,
+    location: s.room || '',
+    status,
+    weightBadge: s.tag && s.tag !== 'Lecture' ? s.tag : undefined,
+    urgent,
+  };
 }
 
 export const AcademicsScreen: React.FC<AcademicsScreenProps> = ({
-  tasks,
-  schedule,
-  onAddScheduleItem,
-  initialSubTab = 'sequencer'
+  initialSubTab = 'sequencer',
+  plannerRefreshKey = 0,
 }) => {
   const [activeTab, setActiveTab] = useState<AcademicSubTab>(initialSubTab);
 
@@ -28,6 +55,31 @@ export const AcademicsScreen: React.FC<AcademicsScreenProps> = ({
   const [cheatsheetAdded, setCheatsheetAdded] = useState(false);
   const [sequencedTasks, setSequencedTasks] = useState<TaskRecord[]>([]);
   const [taskError, setTaskError] = useState<string | null>(null);
+
+  // Planner timeline is backed by persisted study sessions (/study-plan).
+  const [schedule, setSchedule] = useState<ScheduleBlock[]>([]);
+  const [scheduleLoading, setScheduleLoading] = useState(true);
+  const [scheduleError, setScheduleError] = useState<string | null>(null);
+  const [deletingBlockId, setDeletingBlockId] = useState<string | null>(null);
+
+  // Honest action feedback (replaces fake alert() popups).
+  const [actionToast, setActionToast] = useState<string | null>(null);
+  const [busyAction, setBusyAction] = useState<string | null>(null);
+  const [appliedInternship, setAppliedInternship] = useState(false);
+  const [savedInternship, setSavedInternship] = useState(false);
+  const toastTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  const showActionToast = useCallback((msg: string) => {
+    setActionToast(msg);
+    if (toastTimeoutRef.current) clearTimeout(toastTimeoutRef.current);
+    toastTimeoutRef.current = setTimeout(() => setActionToast(null), 3500);
+  }, []);
+
+  useEffect(() => {
+    return () => {
+      if (toastTimeoutRef.current) clearTimeout(toastTimeoutRef.current);
+    };
+  }, []);
 
   // New task form state
   const [taskType, setTaskType] = useState('Assignment');
@@ -50,31 +102,182 @@ export const AcademicsScreen: React.FC<AcademicsScreenProps> = ({
 
   useEffect(() => { refreshTasks(); }, []);
 
+  const refreshSchedule = useCallback(async () => {
+    setScheduleLoading(true);
+    setScheduleError(null);
+    try {
+      const sessions = await getStudySessions();
+      setSchedule(sessions.map(sessionToBlock));
+    } catch {
+      setScheduleError('Your scheduled timeline could not be loaded. Please retry.');
+    } finally {
+      setScheduleLoading(false);
+    }
+  }, []);
+
+  useEffect(() => { refreshSchedule(); }, [refreshSchedule, plannerRefreshKey]);
+
   const handleCreateTask = async (e: React.FormEvent) => {
     e.preventDefault();
     const parsedDuration = Number.parseInt(duration, 10) || 60;
+    const estimated = duration.includes('h') ? parsedDuration * 60 : parsedDuration;
     try {
+      // Persist both the sequenced task and its planner block.
       await createTask({
         title: taskTitle, description: courseModule, priority, difficulty,
         deadline: deadline.includes('T') ? deadline : undefined,
-        estimated_minutes: duration.includes('h') ? parsedDuration * 60 : parsedDuration,
+        estimated_minutes: estimated,
       });
-      await refreshTasks();
+      await createStudySession({
+        title: taskTitle,
+        scheduled_time: deadline,
+        room: `${courseModule} • AI Scheduled`,
+        tag: autoSequence ? 'AI Sequenced' : 'Lecture',
+        status: 'Upcoming',
+        duration_minutes: estimated,
+      });
+      await Promise.all([refreshTasks(), refreshSchedule()]);
     } catch {
       setTaskError('Task was not saved. Check your connection and try again.');
       return;
     }
-    const newBlock: ScheduleBlock = {
-      id: `task-${Date.now()}`,
-      timeRange: '04:00 PM - 06:00 PM',
-      title: taskTitle,
-      location: `${courseModule} • AI Scheduled`,
-      status: autoSequence ? 'AI Sequenced' : 'Scheduled',
-      weightBadge: autoSequence ? 'Database-prioritized task' : undefined,
-      urgent: priority === 'Urgent'
-    };
-    onAddScheduleItem(newBlock);
     setIsModalOpen(false);
+  };
+
+  const handleDeleteBlock = async (blockId: string) => {
+    const numericId = Number(blockId.replace(/^session-/, ''));
+    if (!Number.isFinite(numericId)) return;
+    setDeletingBlockId(blockId);
+    try {
+      await deleteStudySession(numericId);
+      await refreshSchedule();
+      showActionToast('Removed the scheduled block from your planner.');
+    } catch {
+      showActionToast('Could not delete that block. Please try again.');
+    } finally {
+      setDeletingBlockId(null);
+    }
+  };
+
+  const handleSavePaper = async (paperTitle: string) => {
+    if (busyAction) return;
+    setBusyAction(`paper-${paperTitle}`);
+    try {
+      await saveItem({ kind: 'paper', ref_id: paperTitle, title: paperTitle });
+      showActionToast(`Saved "${paperTitle}" to your library — it persists after refresh.`);
+    } catch {
+      showActionToast('Could not save that paper. Please try again.');
+    } finally {
+      setBusyAction(null);
+    }
+  };
+
+  const handleSaveCheatsheet = async (title: string) => {
+    if (busyAction) return;
+    setBusyAction(`cheatsheet-${title}`);
+    try {
+      await saveItem({ kind: 'cheatsheet', ref_id: title, title });
+      setCheatsheetAdded(true);
+      showActionToast('Cheatsheet saved to your revision pack.');
+    } catch {
+      showActionToast('Could not save the cheatsheet. Please try again.');
+    } finally {
+      setBusyAction(null);
+    }
+  };
+
+  const handleStartSkillModule = async () => {
+    if (busyAction) return;
+    setBusyAction('skill-module');
+    try {
+      await createTask({
+        title: 'Docker Fundamentals Module (4 micro-lessons)',
+        description: 'Closes SWE skill gap identified by Career Compass',
+        priority: 'High',
+        difficulty: 'Medium',
+        estimated_minutes: 120,
+      });
+      await refreshTasks();
+      showActionToast('Docker module added to your study planner as a real task.');
+    } catch {
+      showActionToast('Could not add the module. Please try again.');
+    } finally {
+      setBusyAction(null);
+    }
+  };
+
+  const handleSaveInternship = async () => {
+    if (busyAction) return;
+    setBusyAction('internship-save');
+    try {
+      await saveItem({
+        kind: 'internship',
+        ref_id: 'cloudtech-swe-intern',
+        title: 'Software Engineering Intern — CloudTech Innovations',
+        item_meta: { company: 'CloudTech Innovations', stipend: '₹25,000 / mo' },
+      });
+      setSavedInternship(true);
+      showActionToast('Internship bookmarked — find it in your saved items.');
+    } catch {
+      showActionToast('Could not bookmark the internship. Please try again.');
+    } finally {
+      setBusyAction(null);
+    }
+  };
+
+  const handleApplyInternship = async () => {
+    if (busyAction || appliedInternship) return;
+    setBusyAction('internship-apply');
+    try {
+      await addPlacementApplication({
+        company: 'CloudTech Innovations',
+        role: 'Software Engineering Intern',
+        status: 'Applied',
+        match_percentage: 87,
+      });
+      setAppliedInternship(true);
+      showActionToast('Application sent and tracked under Placement Readiness.');
+    } catch (err) {
+      showActionToast(err instanceof ApiError ? err.message : 'Application could not be sent. Please try again.');
+    } finally {
+      setBusyAction(null);
+    }
+  };
+
+  const handlePracticeDrill = async (minutes: number, subject: string) => {
+    if (busyAction) return;
+    setBusyAction(`drill-${subject}`);
+    setPracticeDrillActive(true);
+    try {
+      const res = await logSprint(minutes, subject);
+      showActionToast(`${res.message} (+${res.points_earned} XP, saved to focus history)`);
+      await refreshSchedule();
+    } catch {
+      showActionToast('Could not record the drill. Please try again.');
+    } finally {
+      setBusyAction(null);
+      setPracticeDrillActive(false);
+    }
+  };
+
+  const handleQuizToPlanner = async (quizTitle: string) => {
+    if (busyAction) return;
+    setBusyAction(`quiz-${quizTitle}`);
+    try {
+      await createTask({
+        title: quizTitle,
+        description: 'Quick quiz queued from PYQ insights',
+        priority: 'Medium',
+        difficulty: 'Medium',
+        estimated_minutes: 10,
+      });
+      await refreshTasks();
+      showActionToast('Quiz added to your study planner.');
+    } catch {
+      showActionToast('Could not add the quiz. Please try again.');
+    } finally {
+      setBusyAction(null);
+    }
   };
 
   const completeTask = async (task: TaskRecord) => {
@@ -86,6 +289,13 @@ export const AcademicsScreen: React.FC<AcademicsScreenProps> = ({
 
   return (
     <div className="flex flex-col w-full px-4 sm:px-6 lg:px-8 space-y-6 max-w-[1400px] mx-auto pb-6 pt-1 lg:pt-2">
+      {/* Honest action feedback (saved / applied / failed states) */}
+      {actionToast && (
+        <div className="p-3 rounded-2xl bg-primary text-on-primary text-[12px] font-medium flex items-center gap-2 shadow-lg">
+          <span className="material-symbols-outlined text-[18px]">verified</span>
+          <span className="flex-1">{actionToast}</span>
+        </div>
+      )}
       {/* Sub-Header & Segmented Hub Navigation Bar */}
       <div className="w-full overflow-x-auto no-scrollbar -mx-4 px-4 py-1 sm:mx-0 sm:px-0">
         <div className="flex items-center gap-1 p-1 bg-gray-100 rounded-xl min-w-max border border-gray-200">
@@ -478,7 +688,7 @@ export const AcademicsScreen: React.FC<AcademicsScreenProps> = ({
                       <span>View PDF</span>
                     </button>
                     <button
-                      onClick={() => alert('Downloading official 2023 End-Sem solved question paper (PDF 4.2 MB)...')}
+                      onClick={() => handleSavePaper('2023 End-Sem DBMS paper')}
                       className="py-1.5 px-3 rounded-lg bg-surface-container text-on-surface text-[13px] font-medium flex items-center gap-1.5 hover:bg-surface-container-high transition-colors cursor-pointer"
                       type="button"
                     >
@@ -487,7 +697,7 @@ export const AcademicsScreen: React.FC<AcademicsScreenProps> = ({
                     </button>
                   </div>
                   <button
-                    onClick={() => alert('Bookmarked 2023 End-Sem paper for fast review!')}
+                    onClick={() => handleSavePaper('2023 End-Sem DBMS paper')}
                     className="w-9 h-9 rounded-full bg-surface-container flex items-center justify-center text-on-surface-variant hover:text-primary transition-colors cursor-pointer"
                     title="Bookmark Paper"
                     type="button"
@@ -576,11 +786,12 @@ export const AcademicsScreen: React.FC<AcademicsScreenProps> = ({
                     </div>
                   </div>
                   <button
-                    onClick={() => alert('Starting Docker Fundamentals Module for Alex!')}
-                    className="px-3 py-1 rounded-lg bg-secondary text-on-secondary text-[11px] font-bold hover:opacity-90 shrink-0 cursor-pointer"
+                    onClick={handleStartSkillModule}
+                    disabled={busyAction === 'skill-module'}
+                    className="px-3 py-1 rounded-lg bg-secondary text-on-secondary text-[11px] font-bold hover:opacity-90 shrink-0 cursor-pointer disabled:opacity-50"
                     type="button"
                   >
-                    Start
+                    {busyAction === 'skill-module' ? 'Adding…' : 'Start'}
                   </button>
                 </div>
               </div>
@@ -610,11 +821,15 @@ export const AcademicsScreen: React.FC<AcademicsScreenProps> = ({
                     </div>
                   </div>
                   <button
-                    onClick={() => alert('Saved Software Engineering Intern role to your bookmarks.')}
-                    className="w-8 h-8 rounded-full bg-surface-container flex items-center justify-center text-on-surface-variant hover:text-primary transition-colors shrink-0 cursor-pointer"
+                    onClick={handleSaveInternship}
+                    disabled={busyAction === 'internship-save'}
+                    aria-label="Bookmark internship"
+                    className="w-8 h-8 rounded-full bg-surface-container flex items-center justify-center text-on-surface-variant hover:text-primary transition-colors shrink-0 cursor-pointer disabled:opacity-50"
                     type="button"
                   >
-                    <span className="material-symbols-outlined text-[18px]">bookmark_add</span>
+                    <span className="material-symbols-outlined text-[18px]">
+                      {savedInternship ? 'bookmark' : 'bookmark_add'}
+                    </span>
                   </button>
                 </div>
 
@@ -637,14 +852,21 @@ export const AcademicsScreen: React.FC<AcademicsScreenProps> = ({
                 {/* Actions */}
                 <div className="flex items-center gap-2 pt-1">
                   <button
-                    onClick={() => alert('1-Click application sent with UW transcript & verified GitHub profile!')}
-                    className="flex-1 py-2 px-3 rounded-xl bg-primary-container text-on-primary text-[13px] font-semibold shadow-xs hover:opacity-95 transition-all text-center cursor-pointer"
+                    onClick={handleApplyInternship}
+                    disabled={busyAction === 'internship-apply' || appliedInternship}
+                    className="flex-1 py-2 px-3 rounded-xl bg-primary-container text-on-primary text-[13px] font-semibold shadow-xs hover:opacity-95 transition-all text-center cursor-pointer disabled:opacity-60"
                     type="button"
                   >
-                    Apply Now (1-Click)
+                    {appliedInternship
+                      ? 'Applied ✓ Tracked'
+                      : busyAction === 'internship-apply'
+                      ? 'Sending…'
+                      : 'Apply Now (1-Click)'}
                   </button>
                   <button
-                    onClick={() => alert('Opening verified role requirements: Docker, FastAPI, PostgreSQL.')}
+                    onClick={() =>
+                      showActionToast('Verified requirements: Docker, FastAPI, PostgreSQL • 87% match with your profile.')
+                    }
                     className="py-2 px-3 rounded-xl bg-surface-container text-on-surface text-[13px] font-medium hover:bg-surface-container-high transition-colors cursor-pointer"
                     type="button"
                   >
@@ -745,7 +967,7 @@ export const AcademicsScreen: React.FC<AcademicsScreenProps> = ({
             </div>
           </div>
 
-          {/* Scheduled Timeline Blocks */}
+          {/* Scheduled Timeline Blocks (persisted via /study-plan) */}
           <div className="space-y-2.5">
             <div className="flex items-center justify-between px-1">
               <span className="text-[11px] text-on-surface-variant uppercase tracking-wider font-semibold">
@@ -760,6 +982,36 @@ export const AcademicsScreen: React.FC<AcademicsScreenProps> = ({
                 <span>Schedule New Task</span>
               </button>
             </div>
+
+            {scheduleLoading && (
+              <div className="flex items-center justify-center gap-2 py-8 text-[12px] text-on-surface-variant">
+                <span className="material-symbols-outlined text-[18px] animate-spin">progress_activity</span>
+                <span>Loading your scheduled timeline…</span>
+              </div>
+            )}
+
+            {!scheduleLoading && scheduleError && (
+              <div className="p-4 rounded-2xl bg-error-container/40 text-[12px] text-on-error-container flex items-center justify-between gap-2">
+                <span>{scheduleError}</span>
+                <button
+                  onClick={refreshSchedule}
+                  className="px-3 py-1.5 rounded-lg bg-surface-container-lowest text-[12px] font-semibold cursor-pointer"
+                  type="button"
+                >
+                  Retry
+                </button>
+              </div>
+            )}
+
+            {!scheduleLoading && !scheduleError && schedule.length === 0 && (
+              <div className="p-6 rounded-2xl border border-dashed border-outline-variant/40 text-center space-y-1.5">
+                <span className="material-symbols-outlined text-[28px] text-outline">event_available</span>
+                <p className="text-[13px] font-semibold text-on-surface">No scheduled blocks yet</p>
+                <p className="text-[12px] text-on-surface-variant">
+                  Schedule your first task above — it stays saved after refresh.
+                </p>
+              </div>
+            )}
 
             {schedule.map((item) => (
               <div
@@ -808,6 +1060,16 @@ export const AcademicsScreen: React.FC<AcademicsScreenProps> = ({
                   <p className="text-[15px] font-bold text-on-surface mt-1 truncate">{item.title}</p>
                   <p className="text-[12px] text-on-surface-variant">{item.location}</p>
                 </div>
+                <button
+                  onClick={() => handleDeleteBlock(item.id)}
+                  disabled={deletingBlockId === item.id}
+                  aria-label={`Delete ${item.title}`}
+                  title="Delete scheduled block"
+                  className="w-8 h-8 rounded-full bg-surface-container flex items-center justify-center text-on-surface-variant hover:text-error transition-colors shrink-0 cursor-pointer disabled:opacity-50"
+                  type="button"
+                >
+                  <span className="material-symbols-outlined text-[18px]">delete</span>
+                </button>
               </div>
             ))}
           </div>
@@ -920,10 +1182,7 @@ export const AcademicsScreen: React.FC<AcademicsScreenProps> = ({
             {/* Quick CTA Drill */}
             <div className="pt-1">
               <button
-                onClick={() => {
-                  setPracticeDrillActive(true);
-                  setTimeout(() => setPracticeDrillActive(false), 2000);
-                }}
+                onClick={() => handlePracticeDrill(30, 'DBMS Unit 3 high-yield drill')}
                 className="w-full h-11 bg-primary text-on-primary text-[13px] font-semibold rounded-xl flex items-center justify-center gap-2 shadow-xs hover:bg-primary-container transition-all active:scale-[0.99] cursor-pointer"
                 type="button"
               >
@@ -1051,10 +1310,7 @@ export const AcademicsScreen: React.FC<AcademicsScreenProps> = ({
                   <span>Practice 6 PYQs</span>
                 </button>
                 <button
-                  onClick={() => {
-                    setCheatsheetAdded(true);
-                    alert('Saved Unit 3 Cheatsheet with candidate key algorithms to your offline store!');
-                  }}
+                  onClick={() => handleSaveCheatsheet('Unit 3: Normalization & candidate keys')}
                   className="h-9 rounded-xl bg-surface-container hover:bg-surface-container-high text-on-surface text-[12px] font-medium flex items-center justify-center gap-1 transition-colors cursor-pointer"
                   type="button"
                 >
@@ -1105,7 +1361,7 @@ export const AcademicsScreen: React.FC<AcademicsScreenProps> = ({
                   Precedence Graphs tested 7x
                 </span>
                 <button
-                  onClick={() => alert('Launching 10-Minute Concurrency Quick Quiz...')}
+                  onClick={() => handleQuizToPlanner('Concurrency Quick Quiz (10 min)')}
                   className="h-8 px-3 rounded-lg bg-surface-container hover:bg-surface-container-high text-on-surface text-[12px] font-medium flex items-center gap-1 cursor-pointer"
                   type="button"
                 >
@@ -1126,7 +1382,9 @@ export const AcademicsScreen: React.FC<AcademicsScreenProps> = ({
                 </p>
               </div>
               <button
-                onClick={() => alert('Showing all 12 archive exam papers with rubrics.')}
+                onClick={() =>
+                  showActionToast('1 verified paper is available right now — the archive grows as faculty upload more.')
+                }
                 className="text-[12px] text-primary font-bold flex items-center cursor-pointer hover:underline"
                 type="button"
               >
@@ -1157,7 +1415,7 @@ export const AcademicsScreen: React.FC<AcademicsScreenProps> = ({
                 </div>
                 <div className="flex items-center gap-1 shrink-0">
                   <button
-                    onClick={() => alert('Downloading 2023 End-Sem Solutions PDF...')}
+                    onClick={() => handleSavePaper('2023 End-Sem Solutions')}
                     aria-label="Download Paper"
                     className="w-9 h-9 rounded-full bg-surface-container flex items-center justify-center text-on-surface hover:bg-surface-container-high transition-colors cursor-pointer"
                     type="button"
@@ -1513,14 +1771,18 @@ export const AcademicsScreen: React.FC<AcademicsScreenProps> = ({
             </p>
             <div className="flex flex-wrap gap-2 pt-1">
               <button
-                onClick={() => alert('Compass AI: We picked B → D because B is a single attribute violation, making the sub-schema R1(B, D) immediately minimal and easy to verify!')}
+                onClick={() =>
+                  showActionToast('We picked B → D because B is a single-attribute violation, making R1(B, D) minimal and easy to verify.')
+                }
                 className="px-3 py-1.5 rounded-lg bg-surface-container-lowest text-primary text-[11px] font-semibold shadow-xs hover:bg-surface-container-high transition-colors cursor-pointer"
                 type="button"
               >
                 Why pick B → D before CD → E?
               </button>
               <button
-                onClick={() => alert('Compass AI: 3NF preserves all functional dependencies but may allow transitive dependencies on non-prime attributes; BCNF eliminates all anomalies but can lose FDs.')}
+                onClick={() =>
+                  showActionToast('3NF preserves all FDs but may allow anomalies; BCNF eliminates anomalies but can lose FDs.')
+                }
                 className="px-3 py-1.5 rounded-lg bg-surface-container-lowest text-primary text-[11px] font-semibold shadow-xs hover:bg-surface-container-high transition-colors cursor-pointer"
                 type="button"
               >
@@ -1532,7 +1794,7 @@ export const AcademicsScreen: React.FC<AcademicsScreenProps> = ({
           {/* Action CTAs */}
           <div className="space-y-2 pt-1">
             <button
-              onClick={() => alert('Loading new 10-Mark Practice problem from 2022 End-Sem paper...')}
+              onClick={() => handleQuizToPlanner('BCNF 10-mark practice (2022 End-Sem)')}
               className="w-full h-12 rounded-xl bg-primary text-on-primary text-[13px] font-bold shadow-sm flex items-center justify-center gap-2 hover:bg-primary-container transition-colors cursor-pointer"
               type="button"
             >
@@ -1540,7 +1802,7 @@ export const AcademicsScreen: React.FC<AcademicsScreenProps> = ({
               <span>Try Similar 10-Mark Practice Problem</span>
             </button>
             <button
-              onClick={() => alert('Added BCNF Proof Cheat-sheet to your revision pack!')}
+              onClick={() => handleSaveCheatsheet('BCNF Proof Cheat-sheet')}
               className="w-full h-11 rounded-xl bg-surface-container-high text-on-surface text-[13px] font-semibold flex items-center justify-center gap-2 hover:bg-surface-container-highest transition-colors cursor-pointer"
               type="button"
             >

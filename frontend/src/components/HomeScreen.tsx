@@ -8,6 +8,7 @@ import {
   getRiskPrediction,
   getPlacementReadiness,
   updateStudySession,
+  updateTask,
   DashboardResponse,
   ProfileOut,
   BudgetSummaryResponse,
@@ -66,6 +67,9 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({ onNavigateTab, onOpenStu
     loadAll();
   }, [loadAll]);
 
+  // Dashboard task IDs carry their source table prefix (session-<id> for
+  // study sessions, task-<id> for planner tasks) so toggles persist to the
+  // correct endpoint instead of 404ing against the wrong table.
   const handleToggleTask = async (taskId: string, currentlyCompleted: boolean) => {
     if (!dashboard) return;
     setTogglingTaskId(taskId);
@@ -75,7 +79,16 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({ onNavigateTab, onOpenStu
       tasks: dashboard.tasks.map((t) => (t.id === taskId ? { ...t, completed: !currentlyCompleted } : t)),
     });
     try {
-      await updateStudySession(taskId, { status: currentlyCompleted ? 'Upcoming' : 'Done' });
+      if (taskId.startsWith('task-')) {
+        await updateTask(Number(taskId.replace('task-', '')), {
+          status: currentlyCompleted ? 'Todo' : 'Completed',
+        });
+      } else {
+        const numericId = taskId.startsWith('session-')
+          ? Number(taskId.replace('session-', ''))
+          : taskId;
+        await updateStudySession(numericId, { status: currentlyCompleted ? 'Upcoming' : 'Done' });
+      }
     } catch {
       // Roll back on failure
       setDashboard((prev) =>

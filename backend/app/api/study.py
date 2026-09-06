@@ -89,10 +89,27 @@ def delete_study_session(
 @router.post("/study/sprint")
 def record_sprint(
     req: SprintLogRequest,
-    current_user: User = Depends(get_current_user)
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db)
 ):
+    from datetime import datetime, timezone
+    # Persist the sprint as a completed deep-work session so focus hours,
+    # rhythm activity, and dashboard stats reflect real completed work.
+    session = StudySession(
+        user_id=current_user.id,
+        title=f"Focus Sprint: {req.subject or 'Deep Work'}",
+        scheduled_time=datetime.now(timezone.utc).isoformat(),
+        room="Focus Room",
+        tag="Deep Work",
+        status="Done",
+        duration_minutes=req.duration_minutes or 25,
+    )
+    db.add(session)
+    db.commit()
+    db.refresh(session)
     return {
         "message": f"Recorded {req.duration_minutes} min deep work focus sprint!",
         "points_earned": 50,
-        "focus_multiplier": 1.2
+        "focus_multiplier": 1.2,
+        "session_id": session.id,
     }

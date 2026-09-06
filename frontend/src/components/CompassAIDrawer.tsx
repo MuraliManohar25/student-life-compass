@@ -6,7 +6,7 @@ import { askAi, getDashboard, getMyProfile, ApiError } from '../lib/api';
 interface CompassAIDrawerProps {
   isOpen: boolean;
   onClose: () => void;
-  onAddToPlanner?: (title: string) => void;
+  onAddToPlanner?: (title: string) => Promise<boolean> | boolean;
   onOpenStudyGuide?: () => void;
 }
 
@@ -121,11 +121,14 @@ export const CompassAIDrawer: React.FC<CompassAIDrawerProps> = ({
     }
   };
 
-  const handleAddStudyBlock = () => {
-    if (onAddToPlanner) {
-      onAddToPlanner('DBMS: Relational Algebra & Normalization (Odegaard 2nd Floor)');
-    }
-    setActionSuccessToast('Added 3-Hour DBMS study session to your Saturday planner!');
+  const handleAddStudyBlock = async () => {
+    if (!onAddToPlanner) return;
+    const ok = await onAddToPlanner('DBMS: Relational Algebra & Normalization (Odegaard 2nd Floor)');
+    setActionSuccessToast(
+      ok
+        ? 'Added 3-Hour DBMS study session to your Saturday planner!'
+        : 'Could not save the study session. Check your connection and try again.'
+    );
     if (toastTimeoutRef.current) clearTimeout(toastTimeoutRef.current);
     toastTimeoutRef.current = setTimeout(() => setActionSuccessToast(null), 3000);
   };
@@ -251,7 +254,11 @@ export const CompassAIDrawer: React.FC<CompassAIDrawerProps> = ({
         <div className="p-3 bg-surface-container-lowest border-t border-outline-variant/20 flex items-center gap-2">
           <button
             aria-label="Voice prompt"
-            onClick={() => alert('Listening for campus question... Speak now.')}
+            onClick={() => {
+              setActionSuccessToast('Voice input is not available yet — please type your question below.');
+              if (toastTimeoutRef.current) clearTimeout(toastTimeoutRef.current);
+              toastTimeoutRef.current = setTimeout(() => setActionSuccessToast(null), 3000);
+            }}
             className="w-9 h-9 rounded-full bg-surface-container hover:bg-surface-container-high flex items-center justify-center text-on-surface-variant cursor-pointer transition-colors"
             type="button"
           >

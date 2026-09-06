@@ -1,5 +1,5 @@
 from datetime import datetime, timezone
-from sqlalchemy import Column, Integer, String, Float, Boolean, DateTime, ForeignKey, Text, JSON
+from sqlalchemy import Column, Integer, String, Float, Boolean, DateTime, ForeignKey, Text, JSON, UniqueConstraint
 from sqlalchemy.orm import relationship
 from app.core.database import Base
 
@@ -31,6 +31,7 @@ class User(Base):
     placement_progress = relationship("PlacementProgress", back_populates="user")
     risk_predictions = relationship("RiskPrediction", back_populates="user")
     weekly_reports = relationship("WeeklyReport", back_populates="user")
+    saved_items = relationship("SavedItem", back_populates="user", cascade="all, delete-orphan")
 
 
 class Profile(Base):
@@ -251,6 +252,60 @@ class RiskPrediction(Base):
     predicted_at = Column(DateTime(timezone=True), default=utc_now)
 
     user = relationship("User", back_populates="risk_predictions")
+
+
+class Spot(Base):
+    """Shared campus-spot catalog (public content, same for every student)."""
+    __tablename__ = "spots"
+
+    id = Column(Integer, primary_key=True, index=True)
+    name = Column(String, nullable=False)
+    category = Column(String, nullable=False, default="study")
+    category_label = Column(String, nullable=False, default="Study")
+    rating = Column(Float, default=4.5)
+    distance = Column(String, default="")
+    tags = Column(JSON, default=list)
+    crowd_info = Column(String, default="")
+    extra_badge = Column(String, default="")
+    action_type = Column(String, default="navigate")
+    action_label = Column(String, default="Navigate")
+    image_url = Column(String, default="")
+    alert = Column(String, default="")
+    is_active = Column(Boolean, default=True)
+
+
+class ShoppingItem(Base):
+    """Shared smart-campus shopping catalog (public content)."""
+    __tablename__ = "shopping_items"
+
+    id = Column(Integer, primary_key=True, index=True)
+    name = Column(String, nullable=False)
+    price = Column(Float, nullable=False)
+    description = Column(String, default="")
+    budget_impact = Column(String, default="")
+    image_url = Column(String, default="")
+    category = Column(String, default="essentials")
+    is_active = Column(Boolean, default=True)
+
+
+class SavedItem(Base):
+    """Per-user persisted state: bookmarks, shopping selections, reservations.
+
+    kind is one of: spot, paper, internship, shopping, reservation, cheatsheet.
+    ref_id points at the catalog row (spots/shopping_items) or a free-form key.
+    """
+    __tablename__ = "saved_items"
+    __table_args__ = (UniqueConstraint("user_id", "kind", "ref_id", name="uq_saved_user_kind_ref"),)
+
+    id = Column(Integer, primary_key=True, index=True)
+    user_id = Column(Integer, ForeignKey("users.id"), nullable=False, index=True)
+    kind = Column(String, nullable=False)
+    ref_id = Column(String, nullable=False)
+    title = Column(String, default="")
+    item_meta = Column(JSON, default=dict)
+    created_at = Column(DateTime(timezone=True), default=utc_now)
+
+    user = relationship("User", back_populates="saved_items")
 
 
 class WeeklyReport(Base):

@@ -24,6 +24,9 @@ from app.api.reports import router as reports_router
 from app.api.dashboard import router as dashboard_router
 from app.api.ai import router as ai_router
 from app.api.tasks import router as tasks_router
+from app.api.explore import router as explore_router
+from app.api.saved import router as saved_router
+from app.api.search import router as search_router
 
 
 from sqlalchemy import text
@@ -38,6 +41,15 @@ async def lifespan(app: FastAPI):
                 conn.execute(text("ALTER TABLE users ADD COLUMN IF NOT EXISTS hashed_password VARCHAR;"))
             except Exception as col_err:
                 print(f"Column migration warning: {col_err}")
+        try:
+            db = SessionLocal()
+            try:
+                from app.seed_catalog import seed_catalog
+                seed_catalog(db)
+            finally:
+                db.close()
+        except Exception as seed_err:
+            print(f"Catalog seeding warning: {seed_err}")
 
     except Exception as e:
         print(f"WARNING: Database initialization/seeding failed: {e}")
@@ -78,6 +90,9 @@ routers = [
     dashboard_router,
     ai_router,
     tasks_router,
+    explore_router,
+    saved_router,
+    search_router,
 ]
 
 for r in routers:

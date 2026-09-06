@@ -68,16 +68,18 @@ def get_dashboard(
     daily_limit = round(monthly_budget / 30.0, 2) if monthly_budget else 0
     db_tasks = db.query(Task).filter(Task.user_id == current_user.id).all()
 
+    # IDs are prefixed with their source table so the frontend can route
+    # toggles to the correct endpoint (study sessions vs planner tasks).
     tasks_list = [
         {
-            "id": str(s.id),
+            "id": f"session-{s.id}",
             "title": s.title,
             "completed": s.status == "Done",
             "category": s.tag or "Academic"
         }
         for s in sessions
     ]
-    tasks_list += [{"id": str(t.id), "title": t.title, "completed": t.status == "Completed", "category": t.priority}
+    tasks_list += [{"id": f"task-{t.id}", "title": t.title, "completed": t.status == "Completed", "category": t.priority}
                    for t in db_tasks]
 
     timeline_events = [

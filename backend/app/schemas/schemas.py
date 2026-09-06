@@ -42,7 +42,8 @@ class ProfileUpdate(BaseModel):
     target_role: str
     sleep_hours: float
     monthly_budget: float
-    skills: List[dict]  # [{"name": str, "proficiency_score": float}]
+    # Optional: when omitted, existing skills are preserved instead of wiped.
+    skills: Optional[List[dict]] = None  # [{"name": str, "proficiency_score": float}]
 
 class ProfileOut(BaseModel):
     id: int
@@ -57,6 +58,7 @@ class ProfileOut(BaseModel):
     sleep_hours: float
     monthly_budget: Optional[float] = 0.0
     onboarding_completed: Optional[bool] = False
+    skills: List[dict] = []
 
     class Config:
         from_attributes = True
@@ -246,3 +248,58 @@ class AskAiRequest(BaseModel):
 class AskAiResponse(BaseModel):
     reply: str
     source: str = "gemini-ai"
+
+
+# Explore / Saved / Search Schemas
+class SpotOut(BaseModel):
+    id: int
+    name: str
+    category: str
+    category_label: str
+    rating: float
+    distance: str
+    tags: List[str] = []
+    crowd_info: str = ""
+    extra_badge: str = ""
+    action_type: str = "navigate"
+    action_label: str = "Navigate"
+    image_url: str = ""
+    alert: str = ""
+    saved: bool = False
+
+    class Config:
+        from_attributes = True
+
+
+class ShoppingItemOut(BaseModel):
+    id: int
+    name: str
+    price: float
+    description: str = ""
+    budget_impact: str = ""
+    image_url: str = ""
+    category: str = "essentials"
+    selected: bool = False
+
+    class Config:
+        from_attributes = True
+
+
+class SavedItemCreate(BaseModel):
+    kind: str
+    ref_id: str
+    title: Optional[str] = ""
+    item_meta: Optional[dict] = None
+
+
+class SavedItemOut(BaseModel):
+    id: int
+    user_id: int
+    kind: str
+    ref_id: str
+    title: str = ""
+    item_meta: dict = {}
+    created_at: datetime
+
+    class Config:
+        from_attributes = True

@@ -141,6 +141,7 @@ export interface ProfileOut {
   market_match_index: number;
   sleep_hours: number;
   monthly_budget: number;
+  skills: Array<{ name: string; proficiency_score: number }>;
 }
 
 export interface DashboardResponse {
@@ -201,7 +202,7 @@ export async function getMyProfile(): Promise<ProfileOut> {
   return request<ProfileOut>('/profile/me');
 }
 
-export async function updateMyProfile(data: { college: string; major: string; current_gpa: number; target_gpa: number; target_role: string; sleep_hours: number; monthly_budget: number; skills: Array<{ name: string; proficiency_score: number }> }): Promise<void> {
+export async function updateMyProfile(data: { college: string; major: string; current_gpa: number; target_gpa: number; target_role: string; sleep_hours: number; monthly_budget: number; skills?: Array<{ name: string; proficiency_score: number }> }): Promise<void> {
   return request<void>('/profile/me', { method: 'PUT', body: data });
 }
 
@@ -233,6 +234,9 @@ export async function getExpenses(): Promise<ExpenseOut[]> { return request<Expe
 export async function createExpense(data: Omit<ExpenseOut, 'id' | 'user_id' | 'description' | 'notes'> & Partial<Pick<ExpenseOut, 'description' | 'notes'>>): Promise<ExpenseOut> {
   return request<ExpenseOut>('/finance/expenses', { method: 'POST', body: data });
 }
+export async function updateExpense(id: number, data: { title: string; amount: number; category: string; date?: string }): Promise<ExpenseOut> {
+  return request<ExpenseOut>(`/finance/expenses/${id}`, { method: 'PUT', body: data });
+}
 export async function deleteExpense(id: number): Promise<void> { return request<void>(`/finance/expenses/${id}`, { method: 'DELETE' }); }
 
 export interface TaskRecord { id: number; title: string; description: string; priority: string; difficulty: string; deadline: string | null; estimated_minutes: number; status: string; priority_score: number; reason: string }
@@ -240,6 +244,10 @@ export async function getTasks(): Promise<TaskRecord[]> { return request<TaskRec
 export async function getSequencedTasks(): Promise<TaskRecord[]> { return request<TaskRecord[]>('/tasks/sequencer'); }
 export async function createTask(data: { title: string; description?: string; subject_id?: number; priority?: string; difficulty?: string; deadline?: string; estimated_minutes?: number }): Promise<TaskRecord> { return request<TaskRecord>('/tasks', { method: 'POST', body: data }); }
 export async function updateTask(id: number, data: Partial<TaskRecord>): Promise<TaskRecord> { return request<TaskRecord>(`/tasks/${id}`, { method: 'PUT', body: data }); }
+export async function deleteTask(id: number): Promise<void> { return request<void>(`/tasks/${id}`, { method: 'DELETE' }); }
+export async function logSprint(durationMinutes: number = 25, subject: string = 'Deep Work'): Promise<{ message: string; points_earned: number; session_id: number }> {
+  return request('/study/sprint', { method: 'POST', body: { duration_minutes: durationMinutes, subject } });
+}
 
 export interface NotificationRecord { id: number; title: string; message: string; category: string; is_read: boolean; created_at: string }
 export async function getNotifications(): Promise<NotificationRecord[]> { return request<NotificationRecord[]>('/notifications'); }
@@ -274,7 +282,85 @@ export async function getPlacementReadiness(): Promise<PlacementReadinessRespons
   return request<PlacementReadinessResponse>('/placement-readiness');
 }
 
-// ---- Study session mutation (task completion toggling on Home) ----
+export async function addPlacementApplication(data: { company: string; role: string; status?: string; match_percentage?: number }): Promise<{ message: string; id: number }> {
+  return request('/placement/applications', { method: 'POST', body: data });
+}
+
+// ---- Explore catalog, shopping catalog, saved items, search ----
+
+export interface SpotRecord {
+  id: number;
+  name: string;
+  category: string;
+  category_label: string;
+  rating: number;
+  distance: string;
+  tags: string[];
+  crowd_info: string;
+  extra_badge: string;
+  action_type: string;
+  action_label: string;
+  image_url: string;
+  alert: string;
+  saved: boolean;
+}
+
+export async function getSpots(): Promise<SpotRecord[]> {
+  return request<SpotRecord[]>('/explore/spots');
+}
+
+export interface ShoppingRecord {
+  id: number;
+  name: string;
+  price: number;
+  description: string;
+  budget_impact: string;
+  image_url: string;
+  category: string;
+  selected: boolean;
+}
+
+export async function getShoppingCatalog(): Promise<ShoppingRecord[]> {
+  return request<ShoppingRecord[]>('/explore/shopping');
+}
+
+export interface SavedItemRecord {
+  id: number;
+  user_id: number;
+  kind: string;
+  ref_id: string;
+  title: string;
+  item_meta: Record<string, unknown>;
+  created_at: string;
+}
+
+export async function getSavedItems(kind?: string): Promise<SavedItemRecord[]> {
+  return request<SavedItemRecord[]>(kind ? `/saved?kind=${encodeURIComponent(kind)}` : '/saved');
+}
+
+export async function saveItem(data: { kind: string; ref_id: string; title?: string; item_meta?: Record<string, unknown> }): Promise<SavedItemRecord> {
+  return request<SavedItemRecord>('/saved', { method: 'POST', body: data });
+}
+
+export async function deleteSavedItem(id: number): Promise<void> {
+  return request<void>(`/saved/${id}`, { method: 'DELETE' });
+}
+
+export interface SearchResults {
+  query: string;
+  tasks: Array<{ id: number; title: string; status: string; tab: string }>;
+  sessions: Array<{ id: number; title: string; status: string; tab: string }>;
+  expenses: Array<{ id: number; title: string; amount: number; category: string; tab: string }>;
+  notifications: Array<{ id: number; title: string; category: string }>;
+  spots: Array<{ id: number; title: string; category: string; tab: string }>;
+  shopping: Array<{ id: number; title: string; price: number; tab: string }>;
+}
+
+export async function searchAll(query: string): Promise<SearchResults> {
+  return request<SearchResults>(`/search?q=${encodeURIComponent(query)}`);
+}
+
+// ---- Study sessions (planner schedule, persisted per user) ----
 
 export interface StudySessionOut {
   id: number;
@@ -287,11 +373,25 @@ export interface StudySessionOut {
   duration_minutes: number;
 }
 
+export async function getStudySessions(): Promise<StudySessionOut[]> {
+  return request<StudySessionOut[]>('/study-plan');
+}
+
+export async function createStudySession(
+  data: { title: string; scheduled_time: string; room?: string; tag?: string; status?: string; duration_minutes?: number }
+): Promise<StudySessionOut> {
+  return request<StudySessionOut>('/study-plan', { method: 'POST', body: data });
+}
+
 export async function updateStudySession(
   id: number | string,
   data: Partial<{ title: string; scheduled_time: string; room: string; tag: string; status: string; duration_minutes: number }>
 ): Promise<StudySessionOut> {
   return request<StudySessionOut>(`/study-plan/${id}`, { method: 'PUT', body: data });
+}
+
+export async function deleteStudySession(id: number | string): Promise<void> {
+  return request<void>(`/study-plan/${id}`, { method: 'DELETE' });
 }
 
 // ---- AI Assistant endpoint ----

@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { BudgetSummaryResponse, DashboardResponse, getBudgetSummary, getDashboard, getRiskPrediction, RiskPredictionResponse } from '../lib/api';
+import { BudgetSummaryResponse, DashboardResponse, getBudgetSummary, getDashboard, getRiskPrediction, RiskPredictionResponse, createStudySession, createTask, ApiError } from '../lib/api';
 
 interface InsightsScreenProps {
   onOpenStudyGuide: () => void;
@@ -8,15 +8,49 @@ interface InsightsScreenProps {
 export const InsightsScreen: React.FC<InsightsScreenProps> = ({ onOpenStudyGuide }) => {
   const [activeSegment, setActiveSegment] = useState<'performance' | 'risk'>('performance');
   const [appliedRiskAction, setAppliedRiskAction] = useState<string | null>(null);
+  const [applyingRiskId, setApplyingRiskId] = useState<string | null>(null);
   const [dashboard, setDashboard] = useState<DashboardResponse | null>(null);
   const [budget, setBudget] = useState<BudgetSummaryResponse | null>(null);
   const [risk, setRisk] = useState<RiskPredictionResponse | null>(null);
   const timeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
-  const handleApplyRisk = (riskId: string, desc: string) => {
-    setAppliedRiskAction(desc);
+  const flashRiskToast = (msg: string) => {
+    setAppliedRiskAction(msg);
     if (timeoutRef.current) clearTimeout(timeoutRef.current);
-    timeoutRef.current = setTimeout(() => setAppliedRiskAction(null), 3000);
+    timeoutRef.current = setTimeout(() => setAppliedRiskAction(null), 3500);
+  };
+
+  // Applying a recommendation persists a real planner item instead of
+  // showing a fake confirmation.
+  const handleApplyRisk = async (riskId: string) => {
+    if (applyingRiskId) return;
+    setApplyingRiskId(riskId);
+    try {
+      if (riskId === 'r-1') {
+        await createStudySession({
+          title: 'DBMS Normalization Assignment — focus block',
+          scheduled_time: 'Tonight 7:00 PM - 9:00 PM',
+          room: 'Odegaard Library',
+          tag: 'AI Sequenced',
+          status: 'Upcoming',
+          duration_minutes: 120,
+        });
+        flashRiskToast('Added the 2h DBMS study block to your planner for tonight.');
+      } else {
+        await createTask({
+          title: 'Keep Friday dinner spending under the daily safe limit',
+          description: 'Spending guardrail from Predictive Risk monitor',
+          priority: 'Medium',
+          difficulty: 'Easy',
+          estimated_minutes: 15,
+        });
+        flashRiskToast('Spending guardrail added to your study planner as a tracked task.');
+      }
+    } catch (err) {
+      flashRiskToast(err instanceof ApiError ? err.message : 'Could not apply that recommendation. Please try again.');
+    } finally {
+      setApplyingRiskId(null);
+    }
   };
 
   useEffect(() => {
@@ -291,7 +325,7 @@ export const InsightsScreen: React.FC<InsightsScreenProps> = ({ onOpenStudyGuide
               <div className="space-y-0.5 min-w-0">
                 <div className="flex items-center gap-1.5">
                   <span className="px-2 py-0.5 rounded-full bg-error-container text-on-error-container text-[10px] font-bold">
-                    Moderate Risk
+                    {risk ? `${risk.risk_level} Risk` : 'Loading Risk…'}
                   </span>
                   <span className="text-[11px] text-on-surface-variant font-medium">
                     Due in 24 Hours
@@ -312,13 +346,12 @@ export const InsightsScreen: React.FC<InsightsScreenProps> = ({ onOpenStudyGuide
             <div className="p-2.5 rounded-xl bg-surface-container-low text-[11px] text-on-surface flex items-center justify-between">
               <span>Recommendation: Block 2h study block tonight</span>
               <button
-                onClick={() =>
-                  handleApplyRisk('r-1', 'Added 2h DBMS study block tonight at 7:00 PM in Odegaard Library!')
-                }
-                className="px-2.5 py-1 rounded-lg bg-primary text-on-primary font-bold cursor-pointer hover:bg-primary-container"
+                onClick={() => handleApplyRisk('r-1')}
+                disabled={applyingRiskId === 'r-1'}
+                className="px-2.5 py-1 rounded-lg bg-primary text-on-primary font-bold cursor-pointer hover:bg-primary-container disabled:opacity-50"
                 type="button"
               >
-                Apply
+                {applyingRiskId === 'r-1' ? 'Adding…' : 'Apply'}
               </button>
             </div>
           </div>
@@ -339,20 +372,19 @@ export const InsightsScreen: React.FC<InsightsScreenProps> = ({ onOpenStudyGuide
             </div>
 
             <p className="text-[12px] text-on-surface-variant leading-relaxed">
-              Your safe limit is currently ₹277/day. If Friday evening dinner exceeds ₹450, safe margin
-              drops by 18%.
+              Your safe limit is currently ₹{budget ? budget.daily_cap.toFixed(0) : '—'}/day. If Friday
+              evening dinner exceeds ₹450, your safe margin drops sharply.
             </p>
 
             <div className="p-2.5 rounded-xl bg-surface-container-low text-[11px] text-on-surface flex items-center justify-between">
               <span>Campus cafeteria lunch saves ₹140</span>
               <button
-                onClick={() =>
-                  handleApplyRisk('r-2', 'Set daily spending reminder cap at ₹250 for Friday!')
-                }
-                className="px-2.5 py-1 rounded-lg bg-surface-container-high hover:bg-surface-container-highest text-on-surface font-bold cursor-pointer"
+                onClick={() => handleApplyRisk('r-2')}
+                disabled={applyingRiskId === 'r-2'}
+                className="px-2.5 py-1 rounded-lg bg-surface-container-high hover:bg-surface-container-highest text-on-surface font-bold cursor-pointer disabled:opacity-50"
                 type="button"
               >
-                Set Cap
+                {applyingRiskId === 'r-2' ? 'Saving…' : 'Set Cap'}
               </button>
             </div>
           </div>
