@@ -51,6 +51,12 @@ def signup(payload: UserCreate, db: Session = Depends(get_db)):
     )
 
 
+@router.post("/register", response_model=AuthTokenResponse, status_code=status.HTTP_201_CREATED)
+def register(payload: UserCreate, db: Session = Depends(get_db)):
+    """Register a new user with email, password, and full name (alias for signup)."""
+    return signup(payload, db)
+
+
 @router.post("/login", response_model=AuthTokenResponse)
 def login(payload: UserLogin, db: Session = Depends(get_db)):
     """Authenticate existing user with email and password."""
