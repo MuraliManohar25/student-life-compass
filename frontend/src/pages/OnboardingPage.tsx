@@ -14,7 +14,7 @@ interface OnboardingFormValues {
 }
 
 export const OnboardingPage: React.FC = () => {
-  const { signUp, signIn, user, loading, onboarding_completed } = useAuth();
+  const { user, loading } = useAuth();
   const navigate = useNavigate();
   const [form, setForm] = useState<OnboardingFormValues>({
     name: '',
@@ -30,11 +30,11 @@ export const OnboardingPage: React.FC = () => {
   const [success, setSuccess] = useState('');
 
   useEffect(() => {
-    // If onboarding already completed, redirect to home
-    if (onboarding_completed && user) {
+    // If user already present, redirect to home
+    if (user) {
       navigate('/', { replace: true });
     }
-  }, [onboarding_completed, user, navigate]);
+  }, [user, navigate]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();

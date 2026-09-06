@@ -1,6 +1,6 @@
 import axios from 'axios';
 
-const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || '/api';
+const API_BASE_URL = ((import.meta as any).env?.VITE_API_BASE_URL || '/api').trim();
 
 export const apiClient = axios.create({
   baseURL: API_BASE_URL,
@@ -11,8 +11,8 @@ export const apiClient = axios.create({
 
 // Intercept requests to add Authorization header
 apiClient.interceptors.request.use((config) => {
-  const token = localStorage.getItem('token');
-  if (token) {
+  const token = localStorage.getItem('token') || localStorage.getItem('slc_token');
+  if (token && token !== 'undefined' && token !== 'null') {
     config.headers.Authorization = `Bearer ${token}`;
   }
   return config;
