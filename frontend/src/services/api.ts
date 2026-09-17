@@ -1,6 +1,15 @@
 import axios from 'axios';
 
-const API_BASE_URL = ((import.meta as any).env?.VITE_API_BASE_URL || '/api').trim();
+function getApiBaseUrl(): string {
+  let url = ((import.meta as any).env?.VITE_API_BASE_URL || '/api').trim().replace(/\/+$/, '');
+  // If a full http(s) URL was provided without the /api suffix, automatically append /api
+  if (url.startsWith('http') && !url.endsWith('/api')) {
+    url = `${url}/api`;
+  }
+  return url;
+}
+
+const API_BASE_URL = getApiBaseUrl();
 
 export const apiClient = axios.create({
   baseURL: API_BASE_URL,
@@ -32,6 +41,7 @@ export const authApi = {
     const res = await apiClient.post('/auth/login', { email, password });
     if (res.data.access_token) {
       localStorage.setItem('token', res.data.access_token);
+      localStorage.setItem('slc_token', res.data.access_token);
     }
     return res.data;
   },
@@ -41,6 +51,7 @@ export const authApi = {
   },
   logout: () => {
     localStorage.removeItem('token');
+    localStorage.removeItem('slc_token');
   },
   forgotPassword: async (email: string) => {
     const res = await apiClient.post('/auth/forgot-password', { email });
