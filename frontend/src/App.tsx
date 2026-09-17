@@ -31,14 +31,20 @@ import {
 } from './lib/api';
 
 function spotRecordToSpot(record: SpotRecord): StudentSpot {
+  const tags = record.tags || [];
+  const isFree = tags.some((t) => t.toLowerCase() === 'free');
   return {
     id: `spot-${record.id}`,
     name: record.name,
-    category: record.category as StudentSpot['category'],
-    categoryLabel: record.category_label,
-    rating: record.rating,
-    distance: record.distance,
-    tags: record.tags || [],
+    category: (['study', 'food', 'movies', 'essentials', 'transport', 'career', 'lifestyle'] as const).includes(
+      record.category as 'study'
+    )
+      ? (record.category as StudentSpot['category'])
+      : 'study',
+    categoryLabel: record.category_label || 'Spot',
+    rating: record.rating || 4.5,
+    distance: record.distance || '350 m',
+    tags,
     crowdInfo: record.crowd_info,
     extraBadge: record.extra_badge,
     actionType: (['navigate', 'book_bms', 'call', 'rapido', 'refill'] as const).includes(
@@ -46,9 +52,12 @@ function spotRecordToSpot(record: SpotRecord): StudentSpot {
     )
       ? (record.action_type as StudentSpot['actionType'])
       : 'navigate',
-    actionLabel: record.action_label,
+    actionLabel: record.action_label || 'Directions',
     imageUrl: record.image_url,
     alert: record.alert || undefined,
+    priceStatus: isFree ? 'free' : 'unavailable',
+    openStatus: 'open',
+    availabilityStatus: 'unknown',
   };
 }
 

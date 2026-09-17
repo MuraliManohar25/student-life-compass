@@ -35,6 +35,10 @@ export interface ShoppingItem {
   category: string;
 }
 
+export type PriceStatus = 'free' | 'paid' | 'unavailable';
+export type OpenStatus = 'open' | 'closed' | 'unknown';
+export type AvailabilityStatus = 'available' | 'full' | 'unknown';
+
 export interface StudentSpot {
   id: string;
   name: string;
@@ -42,6 +46,7 @@ export interface StudentSpot {
   categoryLabel: string;
   rating: number;
   distance: string;
+  distanceMeters?: number;
   tags: string[];
   crowdInfo?: string;
   extraBadge?: string;
@@ -49,6 +54,13 @@ export interface StudentSpot {
   actionLabel: string;
   imageUrl: string;
   alert?: string;
+  lat?: number;
+  lon?: number;
+  address?: string;
+  priceStatus?: PriceStatus;
+  openStatus?: OpenStatus;
+  openingHoursText?: string;
+  availabilityStatus?: AvailabilityStatus;
 }
 
 export interface AIMessage {

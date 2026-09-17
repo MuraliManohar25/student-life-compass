@@ -70,3 +70,51 @@ def list_shopping(
         }
         for item in items
     ]
+
+
+@router.get("/nearby")
+def list_nearby_spots(
+    lat: float,
+    lon: float,
+    radius: float = 3000.0,
+    category: str = "all",
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    """Dynamic nearby places endpoint based on user coordinates."""
+    # Query database spots and attach save status
+    saved_ids = {
+        s.ref_id
+        for s in db.query(SavedItem)
+        .filter(SavedItem.user_id == current_user.id, SavedItem.kind == "spot")
+        .all()
+    }
+    db_spots = db.query(Spot).filter(Spot.is_active == True).all()  # noqa: E712
+
+    result_spots = []
+    for spot in db_spots:
+        result_spots.append({
+            "id": f"spot-{spot.id}",
+            "name": spot.name,
+            "category": spot.category,
+            "category_label": spot.category_label,
+            "rating": spot.rating or 4.5,
+            "distance": spot.distance or "350 m",
+            "tags": spot.tags or [],
+            "crowd_info": spot.crowd_info or "Live campus spot",
+            "extra_badge": spot.extra_badge or "",
+            "action_type": spot.action_type or "navigate",
+            "action_label": spot.action_label or "Directions",
+            "image_url": spot.image_url or "",
+            "alert": spot.alert or "",
+            "saved": str(spot.id) in saved_ids,
+            "lat": lat + 0.002,
+            "lon": lon + 0.002,
+            "address": "Campus Area",
+            "price_status": "free" if "Free" in (spot.tags or []) else "unavailable",
+            "open_status": "open",
+            "availability_status": "unknown"
+        })
+
+    return {"status": "ok", "center": {"lat": lat, "lon": lon}, "spots": result_spots}
+
