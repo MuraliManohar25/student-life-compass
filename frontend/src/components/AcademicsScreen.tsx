@@ -12,8 +12,13 @@ import {
   saveItem,
   addPlacementApplication,
   logSprint,
+  getMyProfile,
+  getAcademicResources,
+  AcademicResourceOut,
+  ProfileOut,
   ApiError,
 } from '../lib/api';
+
 
 interface AcademicsScreenProps {
   initialSubTab?: AcademicSubTab;
@@ -69,6 +74,13 @@ export const AcademicsScreen: React.FC<AcademicsScreenProps> = ({
   const [savedInternship, setSavedInternship] = useState(false);
   const toastTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
+  // Official Institutional Resources
+  const [userProfile, setUserProfile] = useState<ProfileOut | null>(null);
+  const [academicResources, setAcademicResources] = useState<AcademicResourceOut[]>([]);
+  const [resourcesLoading, setResourcesLoading] = useState(false);
+  const [resourceCategoryFilter, setResourceCategoryFilter] = useState('All');
+
+
   const showActionToast = useCallback((msg: string) => {
     setActionToast(msg);
     if (toastTimeoutRef.current) clearTimeout(toastTimeoutRef.current);
@@ -116,6 +128,22 @@ export const AcademicsScreen: React.FC<AcademicsScreenProps> = ({
   }, []);
 
   useEffect(() => { refreshSchedule(); }, [refreshSchedule, plannerRefreshKey]);
+
+  useEffect(() => {
+    getMyProfile()
+      .then((p) => {
+        setUserProfile(p);
+        setResourcesLoading(true);
+        getAcademicResources({
+          college_id: p.college_id || undefined,
+          university_id: p.university_id || undefined,
+        })
+          .then((res) => setAcademicResources(res))
+          .catch(() => setAcademicResources([]))
+          .finally(() => setResourcesLoading(false));
+      })
+      .catch(() => undefined);
+  }, []);
 
   const handleCreateTask = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -344,8 +372,21 @@ export const AcademicsScreen: React.FC<AcademicsScreenProps> = ({
             <span className="material-symbols-outlined text-[15px]">school</span>
             <span>AI Step Guide</span>
           </button>
+          <button
+            onClick={() => setActiveTab('resources')}
+            className={`px-3.5 py-1.5 rounded-lg text-xs font-semibold transition-all cursor-pointer flex items-center gap-1.5 ${
+              activeTab === 'resources'
+                ? 'bg-white text-indigo-700 shadow-xs border border-gray-200'
+                : 'text-gray-500 hover:text-[#1a1a1a]'
+            }`}
+            type="button"
+          >
+            <span className="material-symbols-outlined text-[15px]">verified</span>
+            <span>Official Resources</span>
+          </button>
         </div>
       </div>
+
 
       {/* VIEW 1: SMART SEQUENCER ("What Should I Do First?") */}
       {activeTab === 'sequencer' && (
@@ -1812,6 +1853,196 @@ export const AcademicsScreen: React.FC<AcademicsScreenProps> = ({
           </div>
         </div>
       )}
+
+      {/* VIEW 5: OFFICIAL INSTITUTIONAL RESOURCES & CIRCULARS */}
+      {activeTab === 'resources' && (
+        <div className="space-y-6">
+          {/* Institutional Provenance Header Banner */}
+          <div className="rounded-2xl bg-gradient-to-r from-indigo-900 via-indigo-800 to-indigo-950 p-6 sm:p-8 text-white shadow-md relative overflow-hidden">
+            <div className="relative z-10 flex flex-col md:flex-row md:items-center justify-between gap-4">
+              <div className="space-y-2">
+                <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-white/10 backdrop-blur-md text-indigo-200 text-xs font-bold border border-white/15">
+                  <span className="material-symbols-outlined text-[15px] text-emerald-400">verified</span>
+                  <span>Official Academic Repository</span>
+                </div>
+                <h2 className="text-xl sm:text-2xl font-bold tracking-tight text-white">
+                  {userProfile?.college_details?.name || userProfile?.college || 'Institutional Academic Hub'}
+                </h2>
+                <p className="text-xs sm:text-sm text-indigo-200/90 max-w-2xl">
+                  Personalized syllabi, regulations, exam schedules, and circulars mapped strictly to your verified college and affiliated university.
+                </p>
+              </div>
+
+              {/* Institution Provenance Badges */}
+              <div className="flex flex-col sm:flex-row md:flex-col gap-2 shrink-0">
+                {userProfile?.college_details?.aishe_code && (
+                  <div className="px-3 py-2 rounded-xl bg-white/10 backdrop-blur-md border border-white/20 text-xs flex items-center justify-between gap-3">
+                    <span className="text-indigo-200 font-medium">AISHE Code:</span>
+                    <span className="font-mono font-bold text-white">{userProfile.college_details.aishe_code}</span>
+                  </div>
+                )}
+                {userProfile?.university_details?.name ? (
+                  <div className="px-3 py-2 rounded-xl bg-emerald-500/20 backdrop-blur-md border border-emerald-400/30 text-xs flex items-center justify-between gap-3 text-emerald-200">
+                    <span className="flex items-center gap-1">
+                      <span className="material-symbols-outlined text-[15px] text-emerald-400">account_balance</span>
+                      University:
+                    </span>
+                    <span className="font-semibold text-white truncate max-w-[180px]">
+                      {userProfile.university_details.name}
+                    </span>
+                  </div>
+                ) : userProfile?.college_details?.affiliated_university?.university_name ? (
+                  <div className="px-3 py-2 rounded-xl bg-emerald-500/20 backdrop-blur-md border border-emerald-400/30 text-xs flex items-center justify-between gap-3 text-emerald-200">
+                    <span className="flex items-center gap-1">
+                      <span className="material-symbols-outlined text-[15px] text-emerald-400">account_balance</span>
+                      Affiliation:
+                    </span>
+                    <span className="font-semibold text-white truncate max-w-[180px]">
+                      {userProfile.college_details.affiliated_university.university_name}
+                    </span>
+                  </div>
+                ) : null}
+              </div>
+            </div>
+          </div>
+
+          {/* Category Filter Chips */}
+          <div className="flex items-center justify-between gap-2 flex-wrap">
+            <div className="flex items-center gap-1.5 overflow-x-auto no-scrollbar py-1">
+              {['All', 'Regulations', 'Examinations', 'Syllabus', 'Curriculum', 'Learning Portal'].map((cat) => (
+                <button
+                  key={cat}
+                  onClick={() => setResourceCategoryFilter(cat)}
+                  className={`px-3.5 py-1.5 rounded-xl text-xs font-semibold transition-all cursor-pointer ${
+                    resourceCategoryFilter === cat
+                      ? 'bg-indigo-600 text-white shadow-xs'
+                      : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+                  }`}
+                  type="button"
+                >
+                  {cat}
+                </button>
+              ))}
+            </div>
+            <span className="text-xs text-gray-400 font-medium">
+              Strict Provenance Segregation
+            </span>
+          </div>
+
+          {/* Resources Grid */}
+          {resourcesLoading ? (
+            <div className="p-12 text-center text-xs text-gray-500 flex flex-col items-center gap-3">
+              <div className="w-8 h-8 border-3 border-indigo-200 border-t-indigo-600 rounded-full animate-spin" />
+              <span>Fetching verified institutional resources...</span>
+            </div>
+          ) : (
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+              {academicResources
+                .filter(
+                  (r) =>
+                    resourceCategoryFilter === 'All' ||
+                    r.category.toLowerCase() === resourceCategoryFilter.toLowerCase()
+                )
+                .map((res) => {
+                  const isOfficialCollege = res.provenance === 'Official College';
+                  const isVerifiedUniv = res.provenance === 'Verified University';
+
+                  return (
+                    <div
+                      key={res.id}
+                      className="bg-white rounded-2xl border border-gray-200/90 p-5 shadow-xs flex flex-col justify-between hover:shadow-md transition-shadow group"
+                    >
+                      <div className="space-y-3">
+                        {/* Provenance Badge */}
+                        <div className="flex items-center justify-between gap-2">
+                          <span
+                            className={`inline-flex items-center gap-1 text-[11px] font-bold px-2.5 py-1 rounded-full border ${
+                              isOfficialCollege
+                                ? 'bg-indigo-50 text-indigo-700 border-indigo-200'
+                                : isVerifiedUniv
+                                ? 'bg-emerald-50 text-emerald-700 border-emerald-200'
+                                : 'bg-slate-100 text-slate-700 border-slate-200'
+                            }`}
+                          >
+                            <span className="material-symbols-outlined text-[13px]">
+                              {isOfficialCollege ? 'home_work' : isVerifiedUniv ? 'verified' : 'public'}
+                            </span>
+                            {res.provenance}
+                          </span>
+                          <span className="text-[10px] font-bold uppercase tracking-wider text-gray-400 bg-gray-50 px-2 py-0.5 rounded">
+                            {res.category}
+                          </span>
+                        </div>
+
+                        {/* Title */}
+                        <h3 className="text-sm font-bold text-gray-900 group-hover:text-indigo-600 transition-colors leading-snug">
+                          {res.title}
+                        </h3>
+
+                        {/* Authority & Source Meta */}
+                        <div className="space-y-1 text-xs text-gray-500">
+                          <div className="flex items-center gap-1.5 truncate">
+                            <span className="material-symbols-outlined text-[15px] text-gray-400 shrink-0">
+                              account_balance
+                            </span>
+                            <span className="truncate">{res.institution_name}</span>
+                          </div>
+                          <div className="flex items-center gap-1.5 truncate">
+                            <span className="material-symbols-outlined text-[15px] text-gray-400 shrink-0">
+                              description
+                            </span>
+                            <span className="truncate">{res.source_type}</span>
+                          </div>
+                        </div>
+                      </div>
+
+                      {/* Footer CTA & Bookmark */}
+                      <div className="pt-4 mt-4 border-t border-gray-100 flex items-center justify-between gap-2">
+                        <button
+                          type="button"
+                          onClick={async () => {
+                            try {
+                              await saveItem({
+                                kind: 'academic_resource',
+                                ref_id: res.id,
+                                title: res.title,
+                                item_meta: { url: res.url, provenance: res.provenance },
+                              });
+                              showActionToast(`Bookmarked "${res.title}" to library.`);
+                            } catch {
+                              showActionToast('Could not save resource.');
+                            }
+                          }}
+                          className="w-8 h-8 rounded-lg bg-gray-50 hover:bg-gray-100 text-gray-500 flex items-center justify-center transition-colors"
+                          title="Bookmark resource"
+                        >
+                          <span className="material-symbols-outlined text-[17px]">bookmark</span>
+                        </button>
+
+                        <a
+                          href={res.url}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="px-3.5 py-1.5 rounded-xl bg-indigo-50 hover:bg-indigo-100 text-indigo-700 text-xs font-bold transition-colors flex items-center gap-1"
+                        >
+                          <span>Open Resource</span>
+                          <span className="material-symbols-outlined text-[14px]">open_in_new</span>
+                        </a>
+                      </div>
+                    </div>
+                  );
+                })}
+            </div>
+          )}
+
+          {!resourcesLoading && academicResources.length === 0 && (
+            <div className="p-8 text-center text-xs text-gray-500 bg-white rounded-2xl border border-gray-200">
+              No official circulars currently recorded for this institution.
+            </div>
+          )}
+        </div>
+      )}
+
 
       {/* SCHEDULE NEW TASK MODAL / SHEET */}
       {isModalOpen && (

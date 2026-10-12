@@ -1,6 +1,6 @@
 export type NavTab = 'home' | 'academics' | 'finance' | 'explore' | 'insights' | 'profile';
 
-export type AcademicSubTab = 'planner' | 'sequencer' | 'pyqs' | 'stepguide';
+export type AcademicSubTab = 'planner' | 'sequencer' | 'pyqs' | 'stepguide' | 'resources';
 
 export interface TaskItem {
   id: string;

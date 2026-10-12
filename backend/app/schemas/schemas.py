@@ -44,6 +44,15 @@ class ProfileUpdate(BaseModel):
     monthly_budget: float
     # Optional: when omitted, existing skills are preserved instead of wiped.
     skills: Optional[List[dict]] = None  # [{"name": str, "proficiency_score": float}]
+    college_id: Optional[str] = None
+    university_id: Optional[str] = None
+    course: Optional[str] = None
+    branch: Optional[str] = None
+    academic_year: Optional[str] = None
+    semester: Optional[str] = None
+    state: Optional[str] = None
+    district: Optional[str] = None
+    city: Optional[str] = None
 
 class ProfileOut(BaseModel):
     id: int
@@ -59,6 +68,17 @@ class ProfileOut(BaseModel):
     monthly_budget: Optional[float] = 0.0
     onboarding_completed: Optional[bool] = False
     skills: List[dict] = []
+    college_id: Optional[str] = None
+    university_id: Optional[str] = None
+    course: Optional[str] = ""
+    branch: Optional[str] = ""
+    academic_year: Optional[str] = ""
+    semester: Optional[str] = ""
+    state: Optional[str] = ""
+    district: Optional[str] = ""
+    city: Optional[str] = ""
+    college_details: Optional[dict] = None
+    university_details: Optional[dict] = None
 
     class Config:
         from_attributes = True
@@ -73,6 +93,60 @@ class OnboardingRequest(BaseModel):
     location_prefs: Optional[str] = None
     notification_prefs: Optional[str] = None
     study_preferences: Optional[str] = None
+    # 7-question Questionnaire integration
+    college_id: Optional[str] = None
+    university_id: Optional[str] = None
+    branch: Optional[str] = None
+    academic_year: Optional[str] = None
+    state: Optional[str] = None
+    district: Optional[str] = None
+    city: Optional[str] = None
+
+class QuestionnaireSubmit(BaseModel):
+    college_id: Optional[str] = None
+    college_name: str
+    state: str
+    district: str
+    city: Optional[str] = ""
+    course: str
+    branch: str
+    academic_year: str
+    semester: Optional[str] = ""
+    university_id: Optional[str] = None
+    university_name: Optional[str] = ""
+
+class MissingCollegeCreate(BaseModel):
+    submitted_name: str
+    city: Optional[str] = ""
+    district: Optional[str] = ""
+    state: str
+    claimed_university: Optional[str] = ""
+    official_website: Optional[str] = ""
+
+class CollegeOut(BaseModel):
+    id: str
+    aishe_code: Optional[str] = None
+    name: str
+    institution_type: Optional[str] = "Affiliated College"
+    city: Optional[str] = ""
+    district: Optional[str] = ""
+    state: str
+    country: Optional[str] = "India"
+    official_website: Optional[str] = ""
+    verification_status: Optional[str] = "verified"
+    affiliated_university: Optional[dict] = None
+
+class UniversityOut(BaseModel):
+    id: str
+    aishe_code: Optional[str] = None
+    name: str
+    university_type: Optional[str] = ""
+    city: Optional[str] = ""
+    district: Optional[str] = ""
+    state: str
+    official_website: Optional[str] = ""
+    recognition_status: Optional[str] = "UGC_RECOGNIZED"
+    verification_status: Optional[str] = "verified"
 
 # Career Schemas
 class CareerAnalyzeRequest(BaseModel):
