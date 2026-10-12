@@ -24,8 +24,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
     { id: 'academics', label: 'Academics', icon: 'school', badge: 'AI' },
     { id: 'finance', label: 'Finance & Dining', icon: 'account_balance_wallet' },
     { id: 'explore', label: 'Explore Spots', icon: 'explore' },
-    { id: 'insights', label: 'Insights & Risk', icon: 'trending_up', badge: 'New' },
-    { id: 'profile', label: 'Profile', icon: 'person' }
+    { id: 'insights', label: 'Insights & Risk', icon: 'trending_up', badge: 'New' }
   ];
 
   return (
