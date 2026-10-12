@@ -36,26 +36,35 @@ from sqlalchemy import text
 async def lifespan(app: FastAPI):
     try:
         Base.metadata.create_all(bind=engine)
-        with engine.begin() as conn:
-            for table_name, col_name, col_type in [
-                ("users", "supabase_id", "VARCHAR"),
-                ("users", "hashed_password", "VARCHAR"),
-                ("profiles", "college_id", "VARCHAR"),
-                ("profiles", "university_id", "VARCHAR"),
-                ("profiles", "course", "VARCHAR"),
-                ("profiles", "branch", "VARCHAR"),
-                ("profiles", "academic_year", "VARCHAR"),
-                ("profiles", "semester", "VARCHAR"),
-                ("profiles", "state", "VARCHAR"),
-                ("profiles", "district", "VARCHAR"),
-                ("profiles", "city", "VARCHAR"),
+        # NOTE: each ALTER runs in its own transaction. Postgres aborts the
+        # whole transaction after a single failed statement, so the old shared
+        # transaction silently rolled back every column (this caused the
+        # production 500s: column profiles.college_id does not exist).
+        for table_name, col_name, col_type in [
+            ("users", "supabase_id", "VARCHAR"),
+            ("users", "hashed_password", "VARCHAR"),
+            ("profiles", "college_id", "VARCHAR"),
+            ("profiles", "university_id", "VARCHAR"),
+            ("profiles", "course", "VARCHAR"),
+            ("profiles", "branch", "VARCHAR"),
+            ("profiles", "academic_year", "VARCHAR"),
+            ("profiles", "semester", "VARCHAR"),
+            ("profiles", "state", "VARCHAR"),
+            ("profiles", "district", "VARCHAR"),
+            ("profiles", "city", "VARCHAR"),
 
-            ]:
-                try:
-                    conn.execute(text(f"ALTER TABLE {table_name} ADD COLUMN {col_name} {col_type};"))
-                except Exception:
-                    # Column already exists or table handled by create_all
-                    pass
+        ]:
+            try:
+                with engine.begin() as conn:
+                    # IF NOT EXISTS keeps Postgres logs clean; sqlite doesn't
+                    # support it, so plain ADD COLUMN there (duplicate-column
+                    # errors are swallowed below).
+                    if_not_exists = "IF NOT EXISTS " if engine.dialect.name == "postgresql" else ""
+                    conn.execute(text(f"ALTER TABLE {table_name} ADD COLUMN {if_not_exists}{col_name} {col_type};"))
+            except Exception:
+                # Column already exists (create_all handled it), or the backend
+                # doesn't support IF NOT EXISTS — either way, safe to skip.
+                pass
         try:
             db = SessionLocal()
             try:
