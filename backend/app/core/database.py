@@ -4,9 +4,14 @@ from app.core.config import settings
 
 db_url = settings.DATABASE_URL or "sqlite:///./student_compass.db"
 
-# Fix legacy postgres:// URI scheme for SQLAlchemy 2.0 / Supabase
+# Fix legacy postgres:// URI scheme, and pin the psycopg2 driver explicitly:
+# SQLAlchemy 2.x maps bare postgresql:// to psycopg (v3), which is not
+# installed (requirements ship psycopg2-binary) — without this the app
+# crashes on Render with ModuleNotFoundError: No module named 'psycopg'.
 if db_url.startswith("postgres://"):
-    db_url = db_url.replace("postgres://", "postgresql://", 1)
+    db_url = db_url.replace("postgres://", "postgresql+psycopg2://", 1)
+elif db_url.startswith("postgresql://"):
+    db_url = db_url.replace("postgresql://", "postgresql+psycopg2://", 1)
 
 connect_args = {}
 engine_kwargs = {
