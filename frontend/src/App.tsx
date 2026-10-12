@@ -21,7 +21,9 @@ import { NotificationsModal } from './components/NotificationsModal';
 import { AuthProvider, useAuth } from './context/AuthContext';
 import { LoginScreen } from './components/LoginScreen';
 import { SignupScreen } from './components/SignupScreen';
+import { StudentProfileQuestionnaire } from './components/StudentProfileQuestionnaire';
 import {
+  getMyProfile,
   getSpots,
   getSavedItems,
   saveItem,
@@ -29,6 +31,7 @@ import {
   createStudySession,
   SpotRecord,
 } from './lib/api';
+
 
 function spotRecordToSpot(record: SpotRecord): StudentSpot {
   const tags = record.tags || [];
@@ -265,8 +268,34 @@ type AuthMode = 'login' | 'signup';
 function AuthGate() {
   const { isAuthenticated, isLoading } = useAuth();
   const [authMode, setAuthMode] = useState<AuthMode>('login');
+  const [profileChecked, setProfileChecked] = useState(false);
+  const [needsQuestionnaire, setNeedsQuestionnaire] = useState(false);
 
-  if (isLoading) {
+  useEffect(() => {
+    if (!isAuthenticated) {
+      setProfileChecked(false);
+      setNeedsQuestionnaire(false);
+      return;
+    }
+
+    getMyProfile()
+      .then((p) => {
+        // Check if onboarding completed flag is true
+        if (p && !p.onboarding_completed) {
+          setNeedsQuestionnaire(true);
+        } else {
+          setNeedsQuestionnaire(false);
+        }
+      })
+      .catch(() => {
+        setNeedsQuestionnaire(false);
+      })
+      .finally(() => {
+        setProfileChecked(true);
+      });
+  }, [isAuthenticated]);
+
+  if (isLoading || (isAuthenticated && !profileChecked)) {
     return (
       <div className="min-h-screen w-full flex items-center justify-center bg-surface">
         <div className="flex flex-col items-center gap-3">
@@ -282,6 +311,16 @@ function AuthGate() {
       <LoginScreen onSwitchToSignup={() => setAuthMode('signup')} />
     ) : (
       <SignupScreen onSwitchToLogin={() => setAuthMode('login')} />
+    );
+  }
+
+  if (needsQuestionnaire) {
+    return (
+      <StudentProfileQuestionnaire
+        onComplete={() => {
+          setNeedsQuestionnaire(false);
+        }}
+      />
     );
   }
 

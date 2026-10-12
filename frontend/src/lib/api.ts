@@ -141,8 +141,92 @@ export interface ProfileOut {
   market_match_index: number;
   sleep_hours: number;
   monthly_budget: number;
+  onboarding_completed?: boolean;
   skills: Array<{ name: string; proficiency_score: number }>;
+  college_id?: string | null;
+  university_id?: string | null;
+  course?: string;
+  branch?: string;
+  academic_year?: string;
+  semester?: string;
+  state?: string;
+  district?: string;
+  city?: string;
+  college_details?: CollegeOut | null;
+  university_details?: UniversityOut | null;
 }
+
+export interface AffiliatedUniversityRef {
+  university_id: string;
+  university_name: string;
+  relationship_type: string;
+  verification_status: string;
+  evidence_url?: string;
+  evidence_source_type?: string;
+}
+
+export interface CollegeOut {
+  id: string;
+  aishe_code?: string;
+  name: string;
+  institution_type?: string;
+  city?: string;
+  district?: string;
+  state: string;
+  country?: string;
+  official_website?: string;
+  institution_status?: string;
+  verification_status?: string;
+  affiliated_university?: AffiliatedUniversityRef | null;
+}
+
+export interface UniversityOut {
+  id: string;
+  aishe_code?: string;
+  name: string;
+  university_type?: string;
+  city?: string;
+  district?: string;
+  state: string;
+  official_website?: string;
+  recognition_status?: string;
+  verification_status?: string;
+}
+
+export interface QuestionnairePayload {
+  college_id?: string | null;
+  college_name: string;
+  state: string;
+  district: string;
+  city?: string;
+  course: string;
+  branch: string;
+  academic_year: string;
+  semester?: string;
+  university_id?: string | null;
+  university_name?: string;
+}
+
+export interface MissingCollegePayload {
+  submitted_name: string;
+  city?: string;
+  district?: string;
+  state: string;
+  claimed_university?: string;
+  official_website?: string;
+}
+
+export interface AcademicResourceOut {
+  id: string;
+  title: string;
+  category: string;
+  provenance: string;
+  institution_name: string;
+  source_type: string;
+  url: string;
+  verified: boolean;
+}
+
 
 export interface DashboardResponse {
   user_name: string;
@@ -202,13 +286,88 @@ export async function getMyProfile(): Promise<ProfileOut> {
   return request<ProfileOut>('/profile/me');
 }
 
-export async function updateMyProfile(data: { college: string; major: string; current_gpa: number; target_gpa: number; target_role: string; sleep_hours: number; monthly_budget: number; skills?: Array<{ name: string; proficiency_score: number }> }): Promise<void> {
-  return request<void>('/profile/me', { method: 'PUT', body: data });
+export async function updateMyProfile(data: Partial<ProfileOut>): Promise<ProfileOut> {
+  return request<ProfileOut>('/profile/me', { method: 'PUT', body: data });
+}
+
+export async function submitQuestionnaire(data: QuestionnairePayload): Promise<ProfileOut> {
+  return request<ProfileOut>('/profile/questionnaire', { method: 'POST', body: data });
 }
 
 export async function getDashboard(): Promise<DashboardResponse> {
   return request<DashboardResponse>('/dashboard');
 }
+
+// ---- College & University Dataset endpoints ----
+
+export async function searchColleges(params: {
+  q?: string;
+  state?: string;
+  district?: string;
+  page?: number;
+  limit?: number;
+} = {}): Promise<{ total: number; page: number; limit: number; colleges: CollegeOut[] }> {
+  const queryParams = new URLSearchParams();
+  if (params.q) queryParams.set('q', params.q);
+  if (params.state) queryParams.set('state', params.state);
+  if (params.district) queryParams.set('district', params.district);
+  if (params.page) queryParams.set('page', String(params.page));
+  if (params.limit) queryParams.set('limit', String(params.limit));
+  const qs = queryParams.toString();
+  return request<{ total: number; page: number; limit: number; colleges: CollegeOut[] }>(
+    `/colleges/search${qs ? `?${qs}` : ''}`
+  );
+}
+
+export async function getCollege(collegeId: string): Promise<CollegeOut> {
+  return request<CollegeOut>(`/colleges/${encodeURIComponent(collegeId)}`);
+}
+
+export async function getCollegeAffiliations(collegeId: string): Promise<any[]> {
+  return request<any[]>(`/colleges/${encodeURIComponent(collegeId)}/affiliations`);
+}
+
+export async function submitMissingCollege(data: MissingCollegePayload): Promise<{
+  status: string;
+  message: string;
+  submission_id: string;
+}> {
+  return request<{ status: string; message: string; submission_id: string }>(
+    '/colleges/missing-report',
+    { method: 'POST', body: data }
+  );
+}
+
+export async function searchUniversities(params: {
+  q?: string;
+  state?: string;
+  page?: number;
+  limit?: number;
+} = {}): Promise<{ total: number; page: number; limit: number; universities: UniversityOut[] }> {
+  const queryParams = new URLSearchParams();
+  if (params.q) queryParams.set('q', params.q);
+  if (params.state) queryParams.set('state', params.state);
+  if (params.page) queryParams.set('page', String(params.page));
+  if (params.limit) queryParams.set('limit', String(params.limit));
+  const qs = queryParams.toString();
+  return request<{ total: number; page: number; limit: number; universities: UniversityOut[] }>(
+    `/universities/search${qs ? `?${qs}` : ''}`
+  );
+}
+
+export async function getAcademicResources(params: {
+  college_id?: string;
+  university_id?: string;
+} = {}): Promise<AcademicResourceOut[]> {
+  const queryParams = new URLSearchParams();
+  if (params.college_id) queryParams.set('college_id', params.college_id);
+  if (params.university_id) queryParams.set('university_id', params.university_id);
+  const qs = queryParams.toString();
+  const res = await request<any>(`/academics/resources${qs ? `?${qs}` : ''}`);
+  return Array.isArray(res) ? res : (res?.resources || []);
+}
+
+
 
 // ---- Budget / Risk / Placement (used by HomeScreen real-data wiring) ----
 

@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useAuth } from '../context/AuthContext';
 import { getBudgetSummary, getMyProfile, ProfileOut, BudgetSummaryResponse, updateMyProfile, saveItem, ApiError } from '../lib/api';
+import { CollegeSelector, SelectedCollege } from './CollegeSelector';
 
 const PREF_KEYS = {
   radius: 'slc_pref_radius',
@@ -30,6 +31,14 @@ export const StudentProfileModal: React.FC<StudentProfileModalProps> = ({
   const [dailyCap, setDailyCap] = useState('0');
   const [initialDailyCap, setInitialDailyCap] = useState('0');
   const [college, setCollege] = useState('');
+  const [selectedCollege, setSelectedCollege] = useState<SelectedCollege | null>(null);
+  const [course, setCourse] = useState('B.Tech / B.E.');
+  const [branch, setBranch] = useState('');
+  const [academicYear, setAcademicYear] = useState('1st year');
+  const [semester, setSemester] = useState('');
+  const [state, setState] = useState('');
+  const [district, setDistrict] = useState('');
+  const [city, setCity] = useState('');
   const [major, setMajor] = useState('');
   const [targetRole, setTargetRole] = useState('');
   const [currentGpa, setCurrentGpa] = useState('0');
@@ -53,12 +62,46 @@ export const StudentProfileModal: React.FC<StudentProfileModalProps> = ({
       setDailyCap(String(b.daily_cap || 0));
       setInitialDailyCap(String(b.daily_cap || 0));
       setCollege(p.college || '');
-      setMajor(p.major || '');
+      setMajor(p.major || p.branch || '');
+      setCourse(p.course || 'B.Tech / B.E.');
+      setBranch(p.branch || p.major || '');
+      setAcademicYear(p.academic_year || '1st year');
+      setSemester(p.semester || '');
+      setState(p.state || '');
+      setDistrict(p.district || '');
+      setCity(p.city || '');
       setTargetRole(p.target_role || '');
       setCurrentGpa(String(p.current_gpa || 0));
+
+      if (p.college_details) {
+        setSelectedCollege({
+          id: p.college_details.id,
+          name: p.college_details.name,
+          city: p.college_details.city,
+          district: p.college_details.district,
+          state: p.college_details.state,
+          aishe_code: p.college_details.aishe_code,
+          affiliated_university: p.college_details.affiliated_university,
+        });
+      } else if (p.college) {
+        setSelectedCollege({
+          id: p.college_id || null,
+          name: p.college,
+          city: p.city || '',
+          district: p.district || '',
+          state: p.state || '',
+          affiliated_university: p.university_details ? {
+            university_id: p.university_details.id,
+            university_name: p.university_details.name,
+            relationship_type: 'affiliation',
+            verification_status: p.university_details.verification_status || 'unverified',
+          } : null,
+        });
+      }
       setSaveError(null);
     }).catch(() => undefined);
   }, [isOpen]);
+
 
   // Device-level UI preferences persist across refreshes via localStorage.
   useEffect(() => {
@@ -100,8 +143,17 @@ export const StudentProfileModal: React.FC<StudentProfileModalProps> = ({
           ? Math.round(Number(dailyCap) * 30)
           : budget.monthly_budget;
       await updateMyProfile({
-        college: college.trim(),
-        major: major.trim(),
+        college: selectedCollege ? selectedCollege.name : college.trim(),
+        college_id: selectedCollege ? selectedCollege.id : profile.college_id,
+        course: course.trim(),
+        branch: branch.trim(),
+        major: branch.trim() || major.trim(),
+        academic_year: academicYear.trim(),
+        semester: semester.trim(),
+        state: selectedCollege?.state || state.trim(),
+        district: selectedCollege?.district || district.trim(),
+        city: selectedCollege?.city || city.trim(),
+        university_id: selectedCollege?.affiliated_university?.university_id || profile.university_id,
         current_gpa: Number(currentGpa) || 0,
         target_gpa: Number(targetGpa) || 0,
         target_role: targetRole.trim(),
@@ -148,7 +200,7 @@ export const StudentProfileModal: React.FC<StudentProfileModalProps> = ({
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-xs p-4 overflow-y-auto">
-      <div className="bg-white w-full max-w-md rounded-2xl shadow-xl p-6 space-y-4 max-h-[90vh] overflow-y-auto border border-gray-200 animate-in zoom-in-95 duration-150">
+      <div className="bg-white w-full max-w-lg rounded-2xl shadow-xl p-6 space-y-4 max-h-[90vh] overflow-y-auto border border-gray-200 animate-in zoom-in-95 duration-150">
         {/* Header with Close */}
         <div className="flex items-center justify-between">
           <span className="text-xs font-bold text-gray-500 uppercase tracking-widest">
@@ -185,7 +237,9 @@ export const StudentProfileModal: React.FC<StudentProfileModalProps> = ({
               </span>
             </div>
             <p className="text-xs text-gray-500 truncate">{user?.email || 'No email available'}</p>
-            <p className="text-xs text-indigo-600 font-semibold">{profile?.target_role || 'Add a career goal in onboarding'}</p>
+            <p className="text-xs text-indigo-600 font-semibold truncate">
+              {[course, branch || major].filter(Boolean).join(' • ') || profile?.target_role || 'Academic Profile'}
+            </p>
           </div>
         </div>
 
@@ -205,34 +259,94 @@ export const StudentProfileModal: React.FC<StudentProfileModalProps> = ({
           </div>
         </div>
 
-        {/* Academic & Career Preferences */}
+        {/* Institutional & Academic Details */}
+        <div className="space-y-3 pt-1">
+          <h4 className="text-xs font-bold text-gray-500 uppercase tracking-widest">
+            Institutional Master Data
+          </h4>
+          
+          <div>
+            <label className="block text-xs font-semibold text-gray-600 mb-1">
+              Enrolled College
+            </label>
+            <CollegeSelector
+              value={selectedCollege}
+              onChange={(col) => {
+                setSelectedCollege(col);
+                setCollege(col.name);
+                if (col.state) setState(col.state);
+                if (col.district) setDistrict(col.district);
+                if (col.city) setCity(col.city);
+              }}
+            />
+          </div>
+
+          <div className="grid grid-cols-2 gap-2 text-xs">
+            <div>
+              <label className="block text-gray-600 font-semibold mb-1">Course</label>
+              <select
+                value={course}
+                onChange={(e) => setCourse(e.target.value)}
+                className="w-full h-8 px-2 rounded-lg bg-gray-50 border border-gray-200 font-semibold text-[#1a1a1a] text-xs focus:outline-none focus:border-indigo-600"
+              >
+                <option value="B.Tech / B.E.">B.Tech / B.E.</option>
+                <option value="Degree / B.Sc. / B.Com. / B.A.">Degree / B.Sc. / B.Com. / B.A.</option>
+                <option value="Diploma">Diploma</option>
+                <option value="Medical / Allied Health">Medical / Allied Health</option>
+                <option value="Other">Other</option>
+              </select>
+            </div>
+
+            <div>
+              <label className="block text-gray-600 font-semibold mb-1">Branch / Major</label>
+              <input
+                type="text"
+                value={branch}
+                onChange={(e) => {
+                  setBranch(e.target.value);
+                  setMajor(e.target.value);
+                }}
+                placeholder="e.g. Computer Science"
+                className="w-full h-8 px-2 rounded-lg bg-gray-50 border border-gray-200 font-semibold text-[#1a1a1a] text-xs focus:outline-none focus:border-indigo-600"
+              />
+            </div>
+          </div>
+
+          <div className="grid grid-cols-2 gap-2 text-xs">
+            <div>
+              <label className="block text-gray-600 font-semibold mb-1">Year of Study</label>
+              <select
+                value={academicYear}
+                onChange={(e) => setAcademicYear(e.target.value)}
+                className="w-full h-8 px-2 rounded-lg bg-gray-50 border border-gray-200 font-semibold text-[#1a1a1a] text-xs focus:outline-none focus:border-indigo-600"
+              >
+                <option value="1st year">1st year</option>
+                <option value="2nd year">2nd year</option>
+                <option value="3rd year">3rd year</option>
+                <option value="4th year">4th year</option>
+                <option value="Other">Other</option>
+              </select>
+            </div>
+
+            <div>
+              <label className="block text-gray-600 font-semibold mb-1">Semester (Optional)</label>
+              <input
+                type="text"
+                value={semester}
+                onChange={(e) => setSemester(e.target.value)}
+                placeholder="e.g. 5th Semester"
+                className="w-full h-8 px-2 rounded-lg bg-gray-50 border border-gray-200 font-semibold text-[#1a1a1a] text-xs focus:outline-none focus:border-indigo-600"
+              />
+            </div>
+          </div>
+        </div>
+
+        {/* Academic & Career Focus */}
         <div className="space-y-3 pt-1">
           <h4 className="text-xs font-bold text-gray-500 uppercase tracking-widest">
             Academic & Career Focus
           </h4>
           <div className="space-y-2">
-            <div className="flex items-center justify-between gap-2 text-xs">
-              <span className="text-gray-600 shrink-0">College</span>
-              <input
-                type="text"
-                value={college}
-                onChange={(e) => setCollege(e.target.value)}
-                placeholder="Your college"
-                className="flex-1 min-w-0 h-8 px-2 rounded-lg bg-gray-50 border border-gray-200 font-semibold text-[#1a1a1a] text-xs focus:outline-none focus:border-indigo-600"
-              />
-            </div>
-
-            <div className="flex items-center justify-between gap-2 text-xs">
-              <span className="text-gray-600 shrink-0">Major</span>
-              <input
-                type="text"
-                value={major}
-                onChange={(e) => setMajor(e.target.value)}
-                placeholder="Your major"
-                className="flex-1 min-w-0 h-8 px-2 rounded-lg bg-gray-50 border border-gray-200 font-semibold text-[#1a1a1a] text-xs focus:outline-none focus:border-indigo-600"
-              />
-            </div>
-
             <div className="flex items-center justify-between gap-2 text-xs">
               <span className="text-gray-600 shrink-0">Career Goal</span>
               <input

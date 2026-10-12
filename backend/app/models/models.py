@@ -1,3 +1,4 @@
+import uuid
 from datetime import datetime, timezone
 from sqlalchemy import Column, Integer, String, Float, Boolean, DateTime, ForeignKey, Text, JSON, UniqueConstraint
 from sqlalchemy.orm import relationship
@@ -6,6 +7,10 @@ from app.core.database import Base
 
 def utc_now():
     return datetime.now(timezone.utc)
+
+
+def generate_uuid():
+    return str(uuid.uuid4())
 
 
 class User(Base):
@@ -52,12 +57,23 @@ class Profile(Base):
     github_commits = Column(Integer, default=0)
     onboarding_completed = Column(Boolean, default=False)
     semester = Column(String, default="")
+    # College Master Dataset Integration
+    college_id = Column(String, ForeignKey("colleges.id"), nullable=True, index=True)
+    university_id = Column(String, ForeignKey("universities.id"), nullable=True, index=True)
+    course = Column(String, default="")
+    branch = Column(String, default="")
+    academic_year = Column(String, default="")
+    state = Column(String, default="")
+    district = Column(String, default="")
+    city = Column(String, default="")
     location_preferences = Column(Text, default="")
     notification_preferences = Column(Text, default="")
     created_at = Column(DateTime(timezone=True), default=utc_now)
     updated_at = Column(DateTime(timezone=True), default=utc_now, onupdate=utc_now)
 
     user = relationship("User", back_populates="profile")
+    college_rel = relationship("College", foreign_keys=[college_id])
+    university_rel = relationship("University", foreign_keys=[university_id])
     skills = relationship("Skill", back_populates="profile", cascade="all, delete-orphan")
 
 
@@ -323,3 +339,115 @@ class WeeklyReport(Base):
     created_at = Column(DateTime(timezone=True), default=utc_now)
 
     user = relationship("User", back_populates="weekly_reports")
+
+
+class University(Base):
+    __tablename__ = "universities"
+
+    id = Column(String(36), primary_key=True, default=generate_uuid)
+    aishe_code = Column(String(50), unique=True, index=True, nullable=True)
+    name = Column(String(255), nullable=False)
+    normalized_name = Column(String(255), nullable=False, index=True)
+    university_type = Column(String(100), default="State Public University")
+    city = Column(String(100), default="")
+    district = Column(String(100), default="", index=True)
+    state = Column(String(100), nullable=False, index=True)
+    official_website = Column(String(255), default="")
+    recognition_status = Column(String(50), default="UGC_RECOGNIZED")
+    verification_status = Column(String(50), default="verified")
+    source_dataset = Column(String(100), default="UGC_MASTER")
+    source_record_id = Column(String(100), default="")
+    last_verified_at = Column(DateTime(timezone=True), default=utc_now)
+    created_at = Column(DateTime(timezone=True), default=utc_now)
+    updated_at = Column(DateTime(timezone=True), default=utc_now, onupdate=utc_now)
+
+    affiliations = relationship("CollegeUniversityAffiliation", back_populates="university", cascade="all, delete-orphan")
+
+
+class College(Base):
+    __tablename__ = "colleges"
+
+    id = Column(String(36), primary_key=True, default=generate_uuid)
+    aishe_code = Column(String(50), unique=True, index=True, nullable=True)
+    name = Column(String(255), nullable=False)
+    normalized_name = Column(String(255), nullable=False, index=True)
+    institution_type = Column(String(100), default="Affiliated College")
+    city = Column(String(100), default="")
+    district = Column(String(100), default="", index=True)
+    state = Column(String(100), nullable=False, index=True)
+    country = Column(String(50), default="India")
+    postal_code = Column(String(20), default="")
+    official_website = Column(String(255), default="")
+    official_domain = Column(String(100), default="")
+    institution_status = Column(String(50), default="Active")
+    verification_status = Column(String(50), default="verified")
+    source_dataset = Column(String(100), default="AISHE_MASTER")
+    source_record_id = Column(String(100), default="")
+    last_verified_at = Column(DateTime(timezone=True), default=utc_now)
+    created_at = Column(DateTime(timezone=True), default=utc_now)
+    updated_at = Column(DateTime(timezone=True), default=utc_now, onupdate=utc_now)
+
+    affiliations = relationship("CollegeUniversityAffiliation", back_populates="college", cascade="all, delete-orphan")
+
+
+class CollegeUniversityAffiliation(Base):
+    __tablename__ = "college_university_affiliations"
+    __table_args__ = (
+        UniqueConstraint("college_id", "university_id", "relationship_type", name="uq_college_univ_rel"),
+    )
+
+    id = Column(String(36), primary_key=True, default=generate_uuid)
+    college_id = Column(String(36), ForeignKey("colleges.id", ondelete="CASCADE"), nullable=False, index=True)
+    university_id = Column(String(36), ForeignKey("universities.id", ondelete="CASCADE"), nullable=False, index=True)
+    relationship_type = Column(String(50), default="affiliated")
+    verification_status = Column(String(50), default="unverified")
+    valid_from = Column(String(50), nullable=True)
+    valid_until = Column(String(50), nullable=True)
+    evidence_url = Column(String(500), nullable=True)
+    evidence_source_type = Column(String(100), nullable=True)
+    evidence_checked_at = Column(DateTime(timezone=True), nullable=True)
+    confidence_score = Column(Float, default=0.0)
+    created_at = Column(DateTime(timezone=True), default=utc_now)
+    updated_at = Column(DateTime(timezone=True), default=utc_now, onupdate=utc_now)
+
+    college = relationship("College", back_populates="affiliations")
+    university = relationship("University", back_populates="affiliations")
+
+
+class DatasetImport(Base):
+    __tablename__ = "dataset_imports"
+
+    id = Column(String(36), primary_key=True, default=generate_uuid)
+    dataset_name = Column(String(255), nullable=False)
+    source = Column(String(255), nullable=False)
+    version = Column(String(100), default="")
+    licence_info = Column(String(255), default="Open Government Data License (OGDL) India")
+    status = Column(String(50), default="pending")
+    records_inserted = Column(Integer, default=0)
+    records_updated = Column(Integer, default=0)
+    records_skipped = Column(Integer, default=0)
+    records_duplicated = Column(Integer, default=0)
+    records_failed = Column(Integer, default=0)
+    error_summary = Column(JSON, default=list)
+    imported_by_user_id = Column(Integer, ForeignKey("users.id"), nullable=True)
+    created_at = Column(DateTime(timezone=True), default=utc_now)
+    completed_at = Column(DateTime(timezone=True), nullable=True)
+
+
+class MissingCollegeSubmission(Base):
+    __tablename__ = "missing_college_submissions"
+
+    id = Column(String(36), primary_key=True, default=generate_uuid)
+    user_id = Column(Integer, ForeignKey("users.id"), nullable=False, index=True)
+    submitted_name = Column(String(255), nullable=False)
+    city = Column(String(100), default="")
+    district = Column(String(100), default="")
+    state = Column(String(100), nullable=False)
+    claimed_university = Column(String(255), default="")
+    official_website = Column(String(255), default="")
+    status = Column(String(50), default="pending_review")
+    reviewed_by_user_id = Column(Integer, ForeignKey("users.id"), nullable=True)
+    review_notes = Column(Text, default="")
+    created_at = Column(DateTime(timezone=True), default=utc_now)
+    updated_at = Column(DateTime(timezone=True), default=utc_now, onupdate=utc_now)
+

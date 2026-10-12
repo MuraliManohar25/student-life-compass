@@ -27,6 +27,7 @@ from app.api.tasks import router as tasks_router
 from app.api.explore import router as explore_router
 from app.api.saved import router as saved_router
 from app.api.search import router as search_router
+from app.api.institutions import router as institutions_router
 
 
 from sqlalchemy import text
@@ -36,16 +37,32 @@ async def lifespan(app: FastAPI):
     try:
         Base.metadata.create_all(bind=engine)
         with engine.begin() as conn:
-            try:
-                conn.execute(text("ALTER TABLE users ADD COLUMN IF NOT EXISTS supabase_id VARCHAR;"))
-                conn.execute(text("ALTER TABLE users ADD COLUMN IF NOT EXISTS hashed_password VARCHAR;"))
-            except Exception as col_err:
-                print(f"Column migration warning: {col_err}")
+            for table_name, col_name, col_type in [
+                ("users", "supabase_id", "VARCHAR"),
+                ("users", "hashed_password", "VARCHAR"),
+                ("profiles", "college_id", "VARCHAR"),
+                ("profiles", "university_id", "VARCHAR"),
+                ("profiles", "course", "VARCHAR"),
+                ("profiles", "branch", "VARCHAR"),
+                ("profiles", "academic_year", "VARCHAR"),
+                ("profiles", "semester", "VARCHAR"),
+                ("profiles", "state", "VARCHAR"),
+                ("profiles", "district", "VARCHAR"),
+                ("profiles", "city", "VARCHAR"),
+
+            ]:
+                try:
+                    conn.execute(text(f"ALTER TABLE {table_name} ADD COLUMN {col_name} {col_type};"))
+                except Exception:
+                    # Column already exists or table handled by create_all
+                    pass
         try:
             db = SessionLocal()
             try:
                 from app.seed_catalog import seed_catalog
                 seed_catalog(db)
+                from app.seed_institutions import seed_institutions
+                seed_institutions(db)
             finally:
                 db.close()
         except Exception as seed_err:
@@ -93,6 +110,7 @@ routers = [
     explore_router,
     saved_router,
     search_router,
+    institutions_router,
 ]
 
 for r in routers:
