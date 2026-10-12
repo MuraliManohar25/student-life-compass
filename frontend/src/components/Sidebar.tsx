@@ -1,6 +1,7 @@
 import React from 'react';
 import { NavTab } from '../types';
-import { ALEX_AVATAR_URL } from '../data/mockData';
+import { useAuth } from '../context/AuthContext';
+import { UserAvatar } from './UserAvatar';
 
 interface SidebarProps {
   currentTab: NavTab;
@@ -17,12 +18,14 @@ export const Sidebar: React.FC<SidebarProps> = ({
   onOpenNotifications,
   onOpenProfile
 }) => {
+  const { user } = useAuth();
   const tabs: Array<{ id: NavTab; label: string; icon: string; badge?: string }> = [
     { id: 'home', label: 'Dashboard', icon: 'dashboard' },
     { id: 'academics', label: 'Academics', icon: 'school', badge: 'AI' },
     { id: 'finance', label: 'Finance & Dining', icon: 'account_balance_wallet' },
     { id: 'explore', label: 'Explore Spots', icon: 'explore' },
-    { id: 'insights', label: 'Insights & Risk', icon: 'trending_up', badge: 'New' }
+    { id: 'insights', label: 'Insights & Risk', icon: 'trending_up', badge: 'New' },
+    { id: 'profile', label: 'Profile', icon: 'person' }
   ];
 
   return (
@@ -113,17 +116,13 @@ export const Sidebar: React.FC<SidebarProps> = ({
           className="w-full flex items-center gap-3 p-2 rounded-xl hover:bg-gray-100 transition-colors cursor-pointer text-left"
           type="button"
         >
-          <img
-            alt="Profile"
-            className="w-9 h-9 rounded-lg object-cover ring-1 ring-gray-200 shrink-0"
-            src={ALEX_AVATAR_URL}
-          />
+          <UserAvatar name={user?.full_name} userId={user?.id} size="md" rounded="rounded-lg" />
           <div className="flex-1 min-w-0">
             <span className="text-xs font-semibold text-[#1a1a1a] block truncate">
-              Alex Rivers
+              {user?.full_name || 'Student'}
             </span>
             <span className="text-[10px] text-gray-500 block truncate">
-              CS • Sem 6 • 3.82 GPA
+              View profile
             </span>
           </div>
           <span className="material-symbols-outlined text-[18px] text-gray-400">

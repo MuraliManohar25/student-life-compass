@@ -15,7 +15,7 @@ import { FinanceScreen } from './components/FinanceScreen';
 import { ExploreScreen } from './components/ExploreScreen';
 import { InsightsScreen } from './components/InsightsScreen';
 import { CompassAIDrawer } from './components/CompassAIDrawer';
-import { StudentProfileModal } from './components/StudentProfileModal';
+import { ProfileScreen } from './components/ProfileScreen';
 import { SearchModal } from './components/SearchModal';
 import { NotificationsModal } from './components/NotificationsModal';
 import { AuthProvider, useAuth } from './context/AuthContext';
@@ -70,9 +70,9 @@ function AppShell() {
 
   // Modals & Overlay Drawers
   const [isCompassAIOpen, setIsCompassAIOpen] = useState(false);
-  const [isProfileOpen, setIsProfileOpen] = useState(false);
   const [isSearchOpen, setIsSearchOpen] = useState(false);
   const [isNotificationsOpen, setIsNotificationsOpen] = useState(false);
+  const openProfile = useCallback(() => setCurrentTab('profile'), []);
 
   useEffect(() => {
     if (!isAuthenticated) return;
@@ -158,7 +158,7 @@ function AppShell() {
         onSelectTab={(tab) => setCurrentTab(tab)}
         onOpenSearch={() => setIsSearchOpen(true)}
         onOpenNotifications={() => setIsNotificationsOpen(true)}
-        onOpenProfile={() => setIsProfileOpen(true)}
+        onOpenProfile={openProfile}
       />
 
       {/* Mobile/Tablet Top Sticky Header */}
@@ -166,7 +166,7 @@ function AppShell() {
         currentTab={currentTab}
         onOpenSearch={() => setIsSearchOpen(true)}
         onOpenNotifications={() => setIsNotificationsOpen(true)}
-        onOpenProfile={() => setIsProfileOpen(true)}
+        onOpenProfile={openProfile}
       />
 
       {/* Main Viewport Container */}
@@ -202,6 +202,10 @@ function AppShell() {
           {currentTab === 'insights' && (
             <InsightsScreen onOpenStudyGuide={handleOpenStudyGuide} />
           )}
+
+          {currentTab === 'profile' && (
+            <ProfileScreen onBack={() => setCurrentTab('home')} />
+          )}
         </div>
       </main>
 
@@ -223,12 +227,6 @@ function AppShell() {
         onClose={() => setIsCompassAIOpen(false)}
         onAddToPlanner={handleAddAITaskToPlanner}
         onOpenStudyGuide={handleOpenStudyGuide}
-      />
-
-      {/* Student Profile & Settings Modal */}
-      <StudentProfileModal
-        isOpen={isProfileOpen}
-        onClose={() => setIsProfileOpen(false)}
       />
 
       {/* Campus Quick Search Modal */}

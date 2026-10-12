@@ -1,4 +1,4 @@
-export type NavTab = 'home' | 'academics' | 'finance' | 'explore' | 'insights';
+export type NavTab = 'home' | 'academics' | 'finance' | 'explore' | 'insights' | 'profile';
 
 export type AcademicSubTab = 'planner' | 'sequencer' | 'pyqs' | 'stepguide';
 

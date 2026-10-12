@@ -1,6 +1,7 @@
 import React from 'react';
 import { NavTab } from '../types';
-import { APP_LOGO_URL, ALEX_AVATAR_URL } from '../data/mockData';
+import { useAuth } from '../context/AuthContext';
+import { UserAvatar } from './UserAvatar';
 
 interface HeaderProps {
   currentTab: NavTab;
@@ -14,7 +15,8 @@ const TAB_TITLES: Record<NavTab, string> = {
   academics: 'Academics',
   finance: 'Finance',
   explore: 'Explore',
-  insights: 'Insights'
+  insights: 'Insights',
+  profile: 'Profile'
 };
 
 export const Header: React.FC<HeaderProps> = ({
@@ -23,6 +25,7 @@ export const Header: React.FC<HeaderProps> = ({
   onOpenNotifications,
   onOpenProfile
 }) => {
+  const { user } = useAuth();
   return (
     <header className="lg:hidden fixed top-0 left-0 right-0 w-full z-40 bg-white/95 backdrop-blur-md border-b border-gray-200 shadow-xs">
       <div className="max-w-[1400px] mx-auto h-16 px-4 flex items-center justify-between gap-3">
@@ -68,11 +71,7 @@ export const Header: React.FC<HeaderProps> = ({
             className="w-9 h-9 flex items-center justify-center rounded-lg ml-0.5 hover:opacity-90 transition-transform active:scale-95 cursor-pointer ring-1 ring-gray-200"
             type="button"
           >
-            <img
-              alt="Profile"
-              className="w-7 h-7 rounded-md object-cover shadow-xs"
-              src={ALEX_AVATAR_URL}
-            />
+            <UserAvatar name={user?.full_name} userId={user?.id} size="sm" rounded="rounded-md" />
           </button>
         </div>
       </div>

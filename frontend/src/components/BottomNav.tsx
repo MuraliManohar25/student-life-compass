@@ -12,7 +12,8 @@ export const BottomNav: React.FC<BottomNavProps> = ({ currentTab, onSelectTab })
     { id: 'academics', label: 'Academics', icon: 'school' },
     { id: 'finance', label: 'Finance', icon: 'account_balance_wallet' },
     { id: 'explore', label: 'Explore', icon: 'explore' },
-    { id: 'insights', label: 'Insights', icon: 'trending_up' }
+    { id: 'insights', label: 'Insights', icon: 'trending_up' },
+    { id: 'profile', label: 'Profile', icon: 'person' }
   ];
 
   return (
@@ -24,7 +25,7 @@ export const BottomNav: React.FC<BottomNavProps> = ({ currentTab, onSelectTab })
             <button
               key={tab.id}
               onClick={() => onSelectTab(tab.id)}
-              className={`flex flex-col items-center justify-center gap-1 w-16 h-12 transition-all cursor-pointer select-none active:scale-95 ${
+              className={`flex flex-col items-center justify-center gap-1 w-14 h-12 transition-all cursor-pointer select-none active:scale-95 ${
                 isActive
                   ? 'text-indigo-600 font-medium'
                   : 'text-gray-400 hover:text-gray-700'
