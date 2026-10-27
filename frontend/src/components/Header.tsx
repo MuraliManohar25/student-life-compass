@@ -11,12 +11,13 @@ interface HeaderProps {
 }
 
 const TAB_TITLES: Record<NavTab, string> = {
-  home: 'Home',
-  academics: 'Academics',
-  finance: 'Finance',
-  explore: 'Explore',
-  insights: 'Insights',
-  profile: 'Profile'
+  home: 'Dashboard',
+  academics: 'Academic Compass',
+  'academic-tools': 'Academic Tools',
+  finance: 'Finance & Dining',
+  explore: 'Explore Spots',
+  insights: 'Insights & Risk',
+  profile: 'My Profile'
 };
 
 export const Header: React.FC<HeaderProps> = ({

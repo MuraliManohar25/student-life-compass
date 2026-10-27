@@ -219,12 +219,114 @@ export interface MissingCollegePayload {
 export interface AcademicResourceOut {
   id: string;
   title: string;
-  category: string;
+  description?: string;
+  subject_code?: string;
+  subject_name?: string;
+  topic?: string;
+  syllabus_unit?: string;
+  resource_type?: string;
+  source_category?: string;
+  category?: string;
   provenance: string;
-  institution_name: string;
-  source_type: string;
+  institution_name?: string;
+  institution_or_publisher?: string;
+  source_type?: string;
   url: string;
-  verified: boolean;
+  language?: string;
+  semester?: string;
+  curriculum?: string;
+  verified?: boolean;
+  is_verified?: boolean;
+  rating?: number;
+  why_recommended?: string;
+  saved?: boolean;
+  saved_id?: number;
+}
+
+export interface StudentSubjectInfo {
+  id?: number;
+  code: string;
+  name: string;
+  semester?: string;
+  credits: number;
+  target_grade?: string;
+  current_score?: number;
+  difficulty?: string;
+  proficiency: 'Beginner' | 'Intermediate' | 'Advanced' | string;
+  needs_improvement: boolean;
+  topics: string[];
+  resource_count: number;
+}
+
+export interface AcademicCompassResponse {
+  student_summary: {
+    full_name: string;
+    email: string;
+    college: string;
+    degree: string;
+    branch: string;
+    academic_year: string;
+    semester: string;
+    curriculum: string;
+    target_gpa: number;
+    target_role: string;
+    daily_study_hours: number;
+    preferred_formats: string[];
+    preferred_language: string;
+    upcoming_exams: Array<{ subject: string; name: string; date: string }>;
+    improvement_subjects: string[];
+    career_interests: string[];
+    onboarding_completed: boolean;
+  };
+  subjects: StudentSubjectInfo[];
+  recommendations: AcademicResourceOut[];
+  total_resources_count: number;
+  categories_breakdown: Record<string, number>;
+}
+
+export interface AcademicOnboardingPayload {
+  profile: {
+    degree: string;
+    branch: string;
+    college_id?: string | null;
+    college_name?: string;
+    university_id?: string | null;
+    university_name?: string;
+    academic_year: string;
+    semester: string;
+    curriculum: string;
+    subjects: Array<{ code: string; name: string; credits?: number }>;
+  };
+  goals: {
+    target_gpa?: number;
+    upcoming_exams?: Array<{ subject: string; name: string; date: string }>;
+    improvement_subjects?: string[];
+    academic_targets?: string[];
+    career_interests?: string[];
+  };
+  preferences: {
+    preferred_formats?: string[];
+    subject_proficiencies?: Record<string, string>;
+    preferred_language?: string;
+    daily_study_hours?: number;
+    learning_style?: string;
+  };
+}
+
+export interface AcademicProfileUpdatePayload {
+  degree?: string;
+  branch?: string;
+  academic_year?: string;
+  semester?: string;
+  curriculum?: string;
+  college_name?: string;
+  college_id?: string | null;
+  university_name?: string;
+  university_id?: string | null;
+  target_gpa?: number;
+  subjects?: Array<{ code: string; name: string; credits?: number; proficiency?: string; needs_improvement?: boolean; topics?: string[] }>;
+  goals?: Record<string, any>;
+  preferences?: Record<string, any>;
 }
 
 
@@ -365,6 +467,59 @@ export async function getAcademicResources(params: {
   const qs = queryParams.toString();
   const res = await request<any>(`/academics/resources${qs ? `?${qs}` : ''}`);
   return Array.isArray(res) ? res : (res?.resources || []);
+}
+
+export async function getAcademicCompass(): Promise<AcademicCompassResponse> {
+  return request<AcademicCompassResponse>('/academics/compass');
+}
+
+export async function searchAcademicResources(params: {
+  q?: string;
+  subject_code?: string;
+  semester?: string;
+  resource_type?: string;
+  source_category?: string;
+  language?: string;
+  sort_by?: string;
+  page?: number;
+  limit?: number;
+} = {}): Promise<{ total: number; page: number; limit: number; total_pages: number; resources: AcademicResourceOut[] }> {
+  const queryParams = new URLSearchParams();
+  if (params.q) queryParams.set('q', params.q);
+  if (params.subject_code) queryParams.set('subject_code', params.subject_code);
+  if (params.semester) queryParams.set('semester', params.semester);
+  if (params.resource_type) queryParams.set('resource_type', params.resource_type);
+  if (params.source_category) queryParams.set('source_category', params.source_category);
+  if (params.language) queryParams.set('language', params.language);
+  if (params.sort_by) queryParams.set('sort_by', params.sort_by);
+  if (params.page) queryParams.set('page', String(params.page));
+  if (params.limit) queryParams.set('limit', String(params.limit));
+  const qs = queryParams.toString();
+  return request<{ total: number; page: number; limit: number; total_pages: number; resources: AcademicResourceOut[] }>(
+    `/academics/resources/search${qs ? `?${qs}` : ''}`
+  );
+}
+
+export async function submitAcademicOnboarding(
+  payload: AcademicOnboardingPayload
+): Promise<{ status: string; message: string; onboarding_completed: boolean }> {
+  return request('/academics/onboarding', { method: 'POST', body: payload });
+}
+
+export async function updateAcademicProfile(
+  payload: AcademicProfileUpdatePayload
+): Promise<{ status: string; message: string }> {
+  return request('/academics/profile', { method: 'PUT', body: payload });
+}
+
+export async function getEnrolledSubjects(): Promise<StudentSubjectInfo[]> {
+  return request<StudentSubjectInfo[]>('/academics/subjects');
+}
+
+export async function toggleSaveAcademicResource(
+  resourceId: string
+): Promise<{ status: string; saved: boolean; saved_id?: number; message: string }> {
+  return request(`/academics/resources/${encodeURIComponent(resourceId)}/toggle-save`, { method: 'POST' });
 }
 
 

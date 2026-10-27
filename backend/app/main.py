@@ -2,6 +2,7 @@ import os
 from contextlib import asynccontextmanager
 from fastapi import Depends, FastAPI
 from fastapi.middleware.cors import CORSMiddleware
+from sqlalchemy import text
 from sqlalchemy.orm import Session
 
 from app.core.config import settings
@@ -28,50 +29,55 @@ from app.api.explore import router as explore_router
 from app.api.saved import router as saved_router
 from app.api.search import router as search_router
 from app.api.institutions import router as institutions_router
+from app.api.academic_compass import router as academic_compass_router
 
-
-from sqlalchemy import text
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     try:
         Base.metadata.create_all(bind=engine)
-        # NOTE: each ALTER runs in its own transaction. Postgres aborts the
-        # whole transaction after a single failed statement, so the old shared
-        # transaction silently rolled back every column (this caused the
-        # production 500s: column profiles.college_id does not exist).
-        for table_name, col_name, col_type in [
-            ("users", "supabase_id", "VARCHAR"),
-            ("users", "hashed_password", "VARCHAR"),
-            ("profiles", "college_id", "VARCHAR"),
-            ("profiles", "university_id", "VARCHAR"),
-            ("profiles", "course", "VARCHAR"),
-            ("profiles", "branch", "VARCHAR"),
-            ("profiles", "academic_year", "VARCHAR"),
-            ("profiles", "semester", "VARCHAR"),
-            ("profiles", "state", "VARCHAR"),
-            ("profiles", "district", "VARCHAR"),
-            ("profiles", "city", "VARCHAR"),
+        # Safe migration for relational deployments (PostgreSQL)
+        if engine.dialect.name != "sqlite":
+            for table_name, col_name, col_type in [
+                ("users", "supabase_id", "VARCHAR"),
+                ("users", "hashed_password", "VARCHAR"),
+                ("profiles", "college_id", "VARCHAR"),
+                ("profiles", "university_id", "VARCHAR"),
+                ("profiles", "course", "VARCHAR"),
+                ("profiles", "branch", "VARCHAR"),
+                ("profiles", "academic_year", "VARCHAR"),
+                ("profiles", "semester", "VARCHAR"),
+                ("profiles", "state", "VARCHAR"),
+                ("profiles", "district", "VARCHAR"),
+                ("profiles", "city", "VARCHAR"),
+                ("profiles", "curriculum", "VARCHAR"),
+                ("profiles", "learning_preferences", "JSON"),
+                ("profiles", "academic_goals", "JSON"),
+                ("profiles", "subjects_list", "JSON"),
+                ("subjects", "semester", "VARCHAR"),
+                ("subjects", "credits", "INTEGER"),
+                ("subjects", "proficiency", "VARCHAR"),
+                ("subjects", "needs_improvement", "BOOLEAN"),
+                ("subjects", "topics", "JSON"),
+                ("academic_resources", "why_recommended", "TEXT"),
+            ]:
+                try:
+                    with engine.begin() as conn:
+                        if_not_exists = "IF NOT EXISTS " if engine.dialect.name == "postgresql" else ""
+                        conn.execute(text(f"ALTER TABLE {table_name} ADD COLUMN {if_not_exists}{col_name} {col_type};"))
+                except Exception:
+                    pass
 
-        ]:
-            try:
-                with engine.begin() as conn:
-                    # IF NOT EXISTS keeps Postgres logs clean; sqlite doesn't
-                    # support it, so plain ADD COLUMN there (duplicate-column
-                    # errors are swallowed below).
-                    if_not_exists = "IF NOT EXISTS " if engine.dialect.name == "postgresql" else ""
-                    conn.execute(text(f"ALTER TABLE {table_name} ADD COLUMN {if_not_exists}{col_name} {col_type};"))
-            except Exception:
-                # Column already exists (create_all handled it), or the backend
-                # doesn't support IF NOT EXISTS — either way, safe to skip.
-                pass
         try:
             db = SessionLocal()
             try:
                 from app.seed_catalog import seed_catalog
                 seed_catalog(db)
-                from app.seed_institutions import seed_institutions
-                seed_institutions(db)
+                if not os.environ.get("SKIP_INSTITUTION_SEED"):
+                    from app.seed_institutions import seed_institutions
+                    seed_institutions(db)
+                from app.seed_resources import seed_academic_resources
+                seed_academic_resources(db)
             finally:
                 db.close()
         except Exception as seed_err:
@@ -120,6 +126,7 @@ routers = [
     saved_router,
     search_router,
     institutions_router,
+    academic_compass_router,
 ]
 
 for r in routers:

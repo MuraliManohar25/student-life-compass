@@ -21,9 +21,10 @@ export const Sidebar: React.FC<SidebarProps> = ({
   const { user } = useAuth();
   const tabs: Array<{ id: NavTab; label: string; icon: string; badge?: string }> = [
     { id: 'home', label: 'Dashboard', icon: 'dashboard' },
-    { id: 'academics', label: 'Academics', icon: 'school', badge: 'AI' },
+    { id: 'academics', label: 'Academic Compass', icon: 'explore', badge: 'Discovery' },
+    { id: 'academic-tools', label: 'Academic Tools', icon: 'construction' },
     { id: 'finance', label: 'Finance & Dining', icon: 'account_balance_wallet' },
-    { id: 'explore', label: 'Explore Spots', icon: 'explore' },
+    { id: 'explore', label: 'Explore Spots', icon: 'location_on' },
     { id: 'insights', label: 'Insights & Risk', icon: 'trending_up', badge: 'New' }
   ];
 

@@ -20,10 +20,10 @@ interface FlatResult {
 function flatten(results: SearchResults): FlatResult[] {
   const out: FlatResult[] = [];
   for (const t of results.tasks) {
-    out.push({ key: `task-${t.id}`, title: t.title, category: 'Study Task', tab: 'academics', icon: 'school', subtitle: t.status });
+    out.push({ key: `task-${t.id}`, title: t.title, category: 'Study Task', tab: 'academic-tools', icon: 'school', subtitle: t.status });
   }
   for (const s of results.sessions) {
-    out.push({ key: `session-${s.id}`, title: s.title, category: 'Study Session', tab: 'academics', icon: 'event', subtitle: s.status });
+    out.push({ key: `session-${s.id}`, title: s.title, category: 'Study Session', tab: 'academic-tools', icon: 'event', subtitle: s.status });
   }
   for (const e of results.expenses) {
     out.push({ key: `expense-${e.id}`, title: e.title, category: 'Expense', tab: 'finance', icon: 'account_balance_wallet', subtitle: `₹${e.amount} • ${e.category}` });

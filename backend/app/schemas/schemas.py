@@ -53,6 +53,10 @@ class ProfileUpdate(BaseModel):
     state: Optional[str] = None
     district: Optional[str] = None
     city: Optional[str] = None
+    curriculum: Optional[str] = None
+    learning_preferences: Optional[dict] = None
+    academic_goals: Optional[dict] = None
+    subjects_list: Optional[List[dict]] = None
 
 class ProfileOut(BaseModel):
     id: int
@@ -77,6 +81,10 @@ class ProfileOut(BaseModel):
     state: Optional[str] = ""
     district: Optional[str] = ""
     city: Optional[str] = ""
+    curriculum: Optional[str] = ""
+    learning_preferences: Optional[dict] = None
+    academic_goals: Optional[dict] = None
+    subjects_list: Optional[List[dict]] = None
     college_details: Optional[dict] = None
     university_details: Optional[dict] = None
 
@@ -377,3 +385,108 @@ class SavedItemOut(BaseModel):
 
     class Config:
         from_attributes = True
+
+
+# ============================================================================
+# Academic Compass & Resource Discovery Schemas
+# ============================================================================
+
+class AcademicResourceOut(BaseModel):
+    id: str
+    title: str
+    description: str = ""
+    subject_code: str
+    subject_name: str
+    topic: str = ""
+    syllabus_unit: str = ""
+    resource_type: str  # notes, textbook, video, tutorial, pyq, syllabus
+    source_category: str  # official, curated, external
+    provenance: str = "Curated Academic"
+    institution_or_publisher: str = ""
+    url: str
+    language: str = "English"
+    semester: str = ""
+    curriculum: str = "All"
+    is_verified: bool = True
+    rating: float = 4.8
+    why_recommended: Optional[str] = None
+    saved: bool = False
+    saved_id: Optional[int] = None
+
+    class Config:
+        from_attributes = True
+
+
+class StudentSubjectInfo(BaseModel):
+    id: Optional[int] = None
+    code: str
+    name: str
+    semester: str = ""
+    credits: int = 3
+    target_grade: str = "A"
+    current_score: float = 85.0
+    difficulty: str = "Medium"
+    proficiency: str = "Intermediate"  # Beginner, Intermediate, Advanced
+    needs_improvement: bool = False
+    topics: List[str] = []
+    resource_count: int = 0
+
+
+class AcademicOnboardingStep1(BaseModel):
+    degree: str
+    branch: str
+    college_id: Optional[str] = None
+    college_name: Optional[str] = ""
+    university_id: Optional[str] = None
+    university_name: Optional[str] = ""
+    academic_year: str
+    semester: str
+    curriculum: str
+    subjects: List[dict] = []  # [{"code": str, "name": str, "credits": int}]
+
+
+class AcademicOnboardingStep2(BaseModel):
+    target_gpa: Optional[float] = 8.5
+    upcoming_exams: List[dict] = []  # [{"subject": str, "name": str, "date": str}]
+    improvement_subjects: List[str] = []
+    academic_targets: List[str] = []
+    career_interests: List[str] = []
+
+
+class AcademicOnboardingStep3(BaseModel):
+    preferred_formats: List[str] = ["notes", "videos"]  # notes, textbooks, videos, tutorials, interactive
+    subject_proficiencies: dict = {}  # {code: "Beginner" | "Intermediate" | "Advanced"}
+    preferred_language: str = "English"
+    daily_study_hours: float = 2.5
+    learning_style: str = "Visual & Applied"
+
+
+class AcademicOnboardingPayload(BaseModel):
+    profile: AcademicOnboardingStep1
+    goals: AcademicOnboardingStep2
+    preferences: AcademicOnboardingStep3
+
+
+class AcademicProfileUpdatePayload(BaseModel):
+    degree: Optional[str] = None
+    branch: Optional[str] = None
+    academic_year: Optional[str] = None
+    semester: Optional[str] = None
+    curriculum: Optional[str] = None
+    college_name: Optional[str] = None
+    college_id: Optional[str] = None
+    university_name: Optional[str] = None
+    university_id: Optional[str] = None
+    target_gpa: Optional[float] = None
+    subjects: Optional[List[dict]] = None
+    goals: Optional[dict] = None
+    preferences: Optional[dict] = None
+
+
+class AcademicCompassResponse(BaseModel):
+    student_summary: dict
+    subjects: List[StudentSubjectInfo]
+    recommendations: List[AcademicResourceOut]
+    total_resources_count: int
+    categories_breakdown: dict
+

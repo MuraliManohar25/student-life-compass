@@ -8,7 +8,7 @@ from app.schemas.schemas import SavedItemCreate, SavedItemOut
 
 router = APIRouter(prefix="/saved", tags=["Saved Items"])
 
-ALLOWED_KINDS = {"spot", "paper", "internship", "shopping", "reservation", "cheatsheet"}
+ALLOWED_KINDS = {"spot", "paper", "internship", "shopping", "reservation", "cheatsheet", "resource"}
 
 
 @router.get("", response_model=List[SavedItemOut])

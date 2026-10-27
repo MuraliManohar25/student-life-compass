@@ -82,6 +82,10 @@ def _get_profile_out(profile: Profile, db: Session) -> dict:
         "state": getattr(profile, "state", "") or "",
         "district": getattr(profile, "district", "") or "",
         "city": getattr(profile, "city", "") or "",
+        "curriculum": getattr(profile, "curriculum", "") or "",
+        "learning_preferences": getattr(profile, "learning_preferences", None) or {},
+        "academic_goals": getattr(profile, "academic_goals", None) or {},
+        "subjects_list": getattr(profile, "subjects_list", None) or [],
         "college_details": college_details,
         "university_details": university_details,
     }
@@ -247,6 +251,14 @@ def update_my_profile(
         profile.district = data.district
     if data.city is not None:
         profile.city = data.city
+    if data.curriculum is not None:
+        profile.curriculum = data.curriculum
+    if data.learning_preferences is not None:
+        profile.learning_preferences = data.learning_preferences
+    if data.academic_goals is not None:
+        profile.academic_goals = data.academic_goals
+    if data.subjects_list is not None:
+        profile.subjects_list = data.subjects_list
 
     # Update BudgetPrediction row
     budget_pred = db.query(BudgetPrediction).filter(BudgetPrediction.user_id == current_user.id).first()

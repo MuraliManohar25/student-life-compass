@@ -1,8 +1,9 @@
+import os
 from sqlalchemy import create_engine
 from sqlalchemy.orm import declarative_base, sessionmaker
 from app.core.config import settings
 
-db_url = settings.DATABASE_URL or "sqlite:///./student_compass.db"
+db_url = os.environ.get("DATABASE_URL") or settings.DATABASE_URL or "sqlite:///./student_compass.db"
 
 # Fix legacy postgres:// URI scheme, and pin the psycopg2 driver explicitly:
 # SQLAlchemy 2.x maps bare postgresql:// to psycopg (v3), which is not

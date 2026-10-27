@@ -68,6 +68,10 @@ class Profile(Base):
     city = Column(String, default="")
     location_preferences = Column(Text, default="")
     notification_preferences = Column(Text, default="")
+    curriculum = Column(String, default="")
+    learning_preferences = Column(JSON, default=dict)
+    academic_goals = Column(JSON, default=dict)
+    subjects_list = Column(JSON, default=list)
     created_at = Column(DateTime(timezone=True), default=utc_now)
     updated_at = Column(DateTime(timezone=True), default=utc_now, onupdate=utc_now)
 
@@ -115,6 +119,11 @@ class Subject(Base):
     target_grade = Column(String, default="A")
     current_score = Column(Float, default=88.0)
     difficulty = Column(String, default="High")
+    semester = Column(String, default="")
+    credits = Column(Integer, default=3)
+    proficiency = Column(String, default="Intermediate")
+    needs_improvement = Column(Boolean, default=False)
+    topics = Column(JSON, default=list)
 
     user = relationship("User", back_populates="subjects")
     study_sessions = relationship("StudySession", back_populates="subject")
@@ -450,4 +459,28 @@ class MissingCollegeSubmission(Base):
     review_notes = Column(Text, default="")
     created_at = Column(DateTime(timezone=True), default=utc_now)
     updated_at = Column(DateTime(timezone=True), default=utc_now, onupdate=utc_now)
+
+
+class AcademicResource(Base):
+    """Personalized and verified academic resource catalog item."""
+    __tablename__ = "academic_resources"
+
+    id = Column(String(36), primary_key=True, default=generate_uuid)
+    title = Column(String(255), nullable=False)
+    description = Column(Text, default="")
+    subject_code = Column(String(50), index=True, nullable=False)
+    subject_name = Column(String(255), index=True, nullable=False)
+    topic = Column(String(255), default="", index=True)
+    syllabus_unit = Column(String(100), default="")
+    resource_type = Column(String(50), nullable=False)  # "notes", "textbook", "video", "tutorial", "pyq", "syllabus"
+    source_category = Column(String(50), default="curated")  # "official", "curated", "external"
+    provenance = Column(String(100), default="Curated Academic")
+    institution_or_publisher = Column(String(255), default="")
+    url = Column(String(500), nullable=False)
+    language = Column(String(50), default="English")
+    semester = Column(String(50), default="")
+    curriculum = Column(String(100), default="All")
+    is_verified = Column(Boolean, default=True)
+    rating = Column(Float, default=4.8)
+    created_at = Column(DateTime(timezone=True), default=utc_now)
 

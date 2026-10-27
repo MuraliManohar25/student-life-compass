@@ -9,9 +9,9 @@ interface BottomNavProps {
 export const BottomNav: React.FC<BottomNavProps> = ({ currentTab, onSelectTab }) => {
   const tabs: Array<{ id: NavTab; label: string; icon: string }> = [
     { id: 'home', label: 'Home', icon: 'dashboard' },
-    { id: 'academics', label: 'Academics', icon: 'school' },
+    { id: 'academics', label: 'Academics', icon: 'explore' },
     { id: 'finance', label: 'Finance', icon: 'account_balance_wallet' },
-    { id: 'explore', label: 'Explore', icon: 'explore' },
+    { id: 'explore', label: 'Explore', icon: 'location_on' },
     { id: 'insights', label: 'Insights', icon: 'trending_up' }
   ];
 
@@ -19,7 +19,7 @@ export const BottomNav: React.FC<BottomNavProps> = ({ currentTab, onSelectTab })
     <nav className="lg:hidden fixed bottom-0 left-0 right-0 w-full z-40 bg-white/95 backdrop-blur-md shadow-xs border-t border-gray-200 pb-[env(safe-area-inset-bottom,0px)]">
       <div className="max-w-[1400px] mx-auto flex justify-around items-center h-16 px-2">
         {tabs.map((tab) => {
-          const isActive = currentTab === tab.id;
+          const isActive = currentTab === tab.id || (tab.id === 'academics' && currentTab === 'academic-tools');
           return (
             <button
               key={tab.id}

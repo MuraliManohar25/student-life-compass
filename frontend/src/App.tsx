@@ -10,7 +10,9 @@ import { Sidebar } from './components/Sidebar';
 import { BottomNav } from './components/BottomNav';
 import { CompassAIFAB } from './components/CompassAIFAB';
 import { HomeScreen } from './components/HomeScreen';
-import { AcademicsScreen } from './components/AcademicsScreen';
+import { AcademicCompassScreen } from './components/AcademicCompassScreen';
+import { AcademicToolsScreen } from './components/AcademicToolsScreen';
+import { AcademicOnboardingModal } from './components/AcademicOnboardingModal';
 import { FinanceScreen } from './components/FinanceScreen';
 import { ExploreScreen } from './components/ExploreScreen';
 import { InsightsScreen } from './components/InsightsScreen';
@@ -138,7 +140,7 @@ function AppShell() {
   );
 
   const handleOpenStudyGuide = () => {
-    setCurrentTab('academics');
+    setCurrentTab('academic-tools');
     setAcademicSubTab('stepguide');
     setIsCompassAIOpen(false);
   };
@@ -193,9 +195,20 @@ function AppShell() {
           )}
 
           {currentTab === 'academics' && (
-            <AcademicsScreen
+            <AcademicCompassScreen
+              onOpenTools={(subTab) => {
+                if (subTab) setAcademicSubTab(subTab);
+                setCurrentTab('academic-tools');
+              }}
+              onOpenProfile={openProfile}
+            />
+          )}
+
+          {currentTab === 'academic-tools' && (
+            <AcademicToolsScreen
               initialSubTab={academicSubTab}
               plannerRefreshKey={plannerRefreshKey}
+              onBackToCompass={() => setCurrentTab('academics')}
             />
           )}
 
@@ -253,7 +266,7 @@ function AppShell() {
         isOpen={isNotificationsOpen}
         onClose={() => setIsNotificationsOpen(false)}
         onNavigateToAcademics={() => {
-          setCurrentTab('academics');
+          setCurrentTab('academic-tools');
           setAcademicSubTab('sequencer');
         }}
       />
@@ -314,7 +327,9 @@ function AuthGate() {
 
   if (needsQuestionnaire) {
     return (
-      <StudentProfileQuestionnaire
+      <AcademicOnboardingModal
+        isOpen={true}
+        mode="onboarding"
         onComplete={() => {
           setNeedsQuestionnaire(false);
         }}
